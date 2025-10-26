@@ -1,0 +1,7 @@
+# Use the Very Good Analysis ruleset for consistent, high-quality code style
+include: package:very_good_analysis/analysis_options.yaml
+
+linter:
+  rules:
+    # Optional: turn off public API docs warnings
+    public_member_api_docs: false
