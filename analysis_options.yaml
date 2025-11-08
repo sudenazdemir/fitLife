@@ -1,31 +1,8 @@
-# Local analyzer rules for fitlife
-# Bu dosya CI'de analyzer'ın patlamasını engeller.
-
 include: package:flutter_lints/flutter.yaml
-
-analyzer:
-  exclude:
-    # platform tarafından generate edilen şeyler, bunları taramasın
-    - "**/build/**"
-    - "**/ios/**"
-    - "**/android/**"
-    - "**/linux/**"
-    - "**/macos/**"
-    - "**/windows/**"
-    - "**/web/**"
-
-  errors:
-    # CI'nin kırılmaması için bunları hata değil warning yapıyoruz:
-    include_file_not_found: ignore
-    unnecessary_import: warning
-    unused_import: warning
-    dead_code: warning
 
 linter:
   rules:
-    avoid_print: false        # debug için print serbest
+    always_use_package_imports: true
+    avoid_print: true
     prefer_const_constructors: true
-    prefer_const_literals_to_create_immutables: true
-    unnecessary_this: true
-    always_declare_return_types: true
-    sort_constructors_first: true
+    prefer_final_locals: true
