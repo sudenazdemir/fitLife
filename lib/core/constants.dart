@@ -17,6 +17,7 @@ final class AppConstants {
       Color(0xFFF2C24F),
     ],
   );
+   static const xpPerMinute = 10;
 }
 
 
@@ -30,4 +31,11 @@ final class RouteNames {
   static const home = 'home';
   static const workouts = 'workouts';
   static const stats = 'stats';
+}
+
+final class WorkoutCategories {
+  static const fullBody = 'Full Body';
+  static const upperBody = 'Upper Body';
+  static const lowerBody = 'Lower Body';
+  static const cardio = 'Cardio';
 }

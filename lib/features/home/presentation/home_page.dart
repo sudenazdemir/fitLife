@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:fitlife/core/constants.dart';
+import 'package:fitlife/features/workouts/presentation/domain/models/workout.dart';
+
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    _debugTestWorkout(); // geçici
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -39,4 +43,20 @@ class HomePage extends StatelessWidget {
       ),
     );
   }
+}
+void _debugTestWorkout() {
+  final w = Workout(
+    id: 'w1',
+    name: 'Test Workout',
+    category: WorkoutCategories.fullBody,
+    durationMinutes: 30,
+    calories: 200,
+    date: DateTime.now(),
+  );
+
+  final json = w.toJson();
+  debugPrint('Workout JSON: $json');
+
+  final fromJson = Workout.fromJson(json);
+  debugPrint('From JSON: $fromJson');
 }
