@@ -75,7 +75,7 @@ class XpLineChart extends StatelessWidget {
         maxX: (xpValues.length - 1).toDouble(),
         minY: 0,
         maxY: maxY,
-        gridData: FlGridData(show: false),
+        gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
