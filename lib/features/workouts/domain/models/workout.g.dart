@@ -6,7 +6,7 @@ part of 'workout.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_Workout _$WorkoutFromJson(Map<String, dynamic> json) => _Workout(
+Workout _$WorkoutFromJson(Map<String, dynamic> json) => Workout(
       id: json['id'] as String,
       name: json['name'] as String,
       category: json['category'] as String,
@@ -16,7 +16,7 @@ _Workout _$WorkoutFromJson(Map<String, dynamic> json) => _Workout(
           json['date'] == null ? null : DateTime.parse(json['date'] as String),
     );
 
-Map<String, dynamic> _$WorkoutToJson(_Workout instance) => <String, dynamic>{
+Map<String, dynamic> _$WorkoutToJson(Workout instance) => <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
       'category': instance.category,

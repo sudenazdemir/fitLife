@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fitlife/core/constants.dart';
-import 'package:fitlife/features/workouts/presentation/domain/models/workout.dart';
+import 'package:fitlife/features/workouts/domain/models/workout.dart';
 
 
 class HomePage extends StatelessWidget {

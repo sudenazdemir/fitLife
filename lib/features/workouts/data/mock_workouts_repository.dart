@@ -1,5 +1,5 @@
 import 'package:fitlife/features/workouts/domain/repositories/workouts_repository.dart';
-import 'package:fitlife/features/workouts/presentation/domain/models/workout.dart';
+import 'package:fitlife/features/workouts/domain/models/workout.dart';
 import 'package:fitlife/core/utils/result.dart';
 import 'package:fitlife/core/constants.dart';
 
