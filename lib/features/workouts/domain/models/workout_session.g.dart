@@ -23,13 +23,14 @@ class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
       durationMinutes: fields[3] as int,
       calories: fields[4] as int,
       date: fields[5] as DateTime,
+      id: fields[6] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, WorkoutSession obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.workoutId)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
       ..writeByte(4)
       ..write(obj.calories)
       ..writeByte(5)
-      ..write(obj.date);
+      ..write(obj.date)
+      ..writeByte(6)
+      ..write(obj.id);
   }
 
   @override

@@ -21,6 +21,9 @@ class WorkoutSession {
 
   @HiveField(5)
   final DateTime date;
+  
+  @HiveField(6)
+  final String id;
 
   WorkoutSession({
     required this.workoutId,
@@ -29,5 +32,6 @@ class WorkoutSession {
     required this.durationMinutes,
     required this.calories,
     required this.date,
+    required this.id,
   });
 }

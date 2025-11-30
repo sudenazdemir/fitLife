@@ -2,21 +2,26 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:fitlife/features/workouts/domain/models/workout_session.dart';
 
 class WorkoutSessionRepository {
-  final Box<WorkoutSession> _box;
+  static const _boxName = 'workout_sessions_v2';
 
-  WorkoutSessionRepository(this._box);
+  Future<Box<WorkoutSession>> _openBox() async {
+    return Hive.openBox<WorkoutSession>(_boxName);
+  }
 
   Future<void> addSession(WorkoutSession session) async {
-    await _box.add(session);
+    final box = await _openBox();
+    await box.put(session.id, session);
   }
 
   Future<List<WorkoutSession>> getAllSessions() async {
-    final list = _box.values.toList();
-    list.sort((a, b) => b.date.compareTo(a.date)); // yeniler üstte
+    final box = await _openBox();
+    final list = box.values.toList();
+    list.sort((a, b) => b.date.compareTo(a.date));
     return list;
   }
 
   Future<void> clearAll() async {
-    await _box.clear();
+    final box = await _openBox();
+    await box.clear();
   }
 }
