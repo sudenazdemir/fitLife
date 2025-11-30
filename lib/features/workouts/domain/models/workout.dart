@@ -10,6 +10,9 @@ class Workout {
   final int durationMinutes;
   final int calories;
   final DateTime? date;
+  final String title;
+  final String? difficulty;
+  final String? description;
 
   const Workout({
     required this.id,
@@ -18,6 +21,9 @@ class Workout {
     required this.durationMinutes,
     this.calories = 0,
     this.date,
+    required this.title,
+    this.difficulty,
+    this.description,
   });
 
   factory Workout.fromJson(Map<String, dynamic> json) =>

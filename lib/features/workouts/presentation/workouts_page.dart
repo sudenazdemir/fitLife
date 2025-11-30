@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fitlife/features/workouts/domain/providers/workouts_provider.dart';
+import 'package:fitlife/core/constants.dart';
+import 'package:go_router/go_router.dart';
 
 class WorkoutsPage extends ConsumerWidget {
   const WorkoutsPage({super.key});
@@ -22,11 +24,19 @@ class WorkoutsPage extends ConsumerWidget {
           return ListView.builder(
             itemCount: workouts.length,
             itemBuilder: (context, i) {
-              final w = workouts[i];
+              final workout = workouts[i];
               return ListTile(
-                title: Text(w.name),
-                subtitle: Text("${w.durationMinutes} min - ${w.category}"),
-                trailing: Text("${w.calories} kcal"),
+                title: Text(workout.title),
+                subtitle: Text(
+                    '${workout.durationMinutes} min • ${workout.category}'),
+                trailing: Text('${workout.calories} kcal'),
+                onTap: () {
+                  context.goNamed(
+                    RouteNames.workoutDetail,
+                    pathParameters: {'id': workout.id}, // id yoksa title kullan
+                    extra: workout,
+                  );
+                },
               );
             },
           );

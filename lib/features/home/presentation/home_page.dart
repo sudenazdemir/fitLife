@@ -52,6 +52,9 @@ void _debugTestWorkout() {
     durationMinutes: 30,
     calories: 200,
     date: DateTime.now(),
+    title: 'Test Workout Title',
+    difficulty: 'Beginner',
+    description: 'This is a test workout description.',
   );
 
   final json = w.toJson();

@@ -17,6 +17,9 @@ class MockWorkoutsRepository implements WorkoutsRepository {
           durationMinutes: 20,
           calories: 150,
           date: DateTime.now(),
+          title: "Full Body Beginner Workout",
+          difficulty: "Beginner",
+          description: "A full body workout for beginners to build strength and endurance.",
         ),
         Workout(
           id: "w2",
@@ -25,6 +28,9 @@ class MockWorkoutsRepository implements WorkoutsRepository {
           durationMinutes: 45,
           calories: 350,
           date: DateTime.now(),
+          title: "Upper Body Strength Training",
+          difficulty: "Intermediate",
+          description: "An intermediate workout focused on building upper body strength.",
         ),
         Workout(
           id: "w3",
@@ -33,6 +39,9 @@ class MockWorkoutsRepository implements WorkoutsRepository {
           durationMinutes: 30,
           calories: 220,
           date: DateTime.now(),
+          title: "Cardio Burn Workout",
+          difficulty: "Intermediate",
+          description: "An intermediate cardio workout to improve endurance and burn calories.",
         ),
       ];
 

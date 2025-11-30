@@ -25,12 +25,16 @@ final class Routes {
   static const home = '/';
   static const workouts = '/workouts';
   static const stats = '/stats';
+   static const workoutDetail = '/workouts/:id';
+  static const workoutSessionLogger = '/workouts/:id/session';
 }
 
 final class RouteNames {
   static const home = 'home';
   static const workouts = 'workouts';
   static const stats = 'stats';
+  static const workoutDetail = 'workout-detail';
+  static const workoutSessionLogger = 'workout-session-logger';
 }
 
 final class WorkoutCategories {

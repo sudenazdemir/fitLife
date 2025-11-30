@@ -14,6 +14,9 @@ Workout _$WorkoutFromJson(Map<String, dynamic> json) => Workout(
       calories: (json['calories'] as num?)?.toInt() ?? 0,
       date:
           json['date'] == null ? null : DateTime.parse(json['date'] as String),
+      title: json['title'] as String,
+      difficulty: json['difficulty'] as String?,
+      description: json['description'] as String?,
     );
 
 Map<String, dynamic> _$WorkoutToJson(Workout instance) => <String, dynamic>{
@@ -23,4 +26,7 @@ Map<String, dynamic> _$WorkoutToJson(Workout instance) => <String, dynamic>{
       'durationMinutes': instance.durationMinutes,
       'calories': instance.calories,
       'date': instance.date?.toIso8601String(),
+      'title': instance.title,
+      'difficulty': instance.difficulty,
+      'description': instance.description,
     };
