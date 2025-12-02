@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:fitlife/features/workouts/domain/models/workout_session.dart';
 import 'package:fitlife/features/workouts/domain/providers/workout_session_providers.dart';
 
@@ -10,162 +11,258 @@ class StatsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sessionsAsync = ref.watch(workoutSessionsProvider);
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final colorScheme = theme.colorScheme;
 
-    // 🔹 Mock XP datası (7 günlük örnek)
-    final mockXpPerDay = <double>[50, 80, 40, 100, 70, 120, 90];
-
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Weekly XP',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: sessionsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => Center(
+            child: Text('Error loading stats: $e'),
+          ),
+          data: (sessions) {
+            if (sessions.isEmpty) {
+              return Center(
+                child: Text(
+                  'No workouts logged yet.\nFinish a workout to see your XP stats.',
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodyMedium,
                 ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                child: XpLineChart(xpValues: mockXpPerDay),
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: sessionsAsync.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error: $e')),
-                  data: (sessions) {
-                    return _SessionsList(sessions: sessions);
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+              );
+            }
 
-class XpLineChart extends StatelessWidget {
-  const XpLineChart({
-    super.key,
-    required this.xpValues,
-  });
+            final xpByDay = _groupXpPerDay(sessions);
+            final days = xpByDay.keys.toList(); // DateTime list
+            final values = xpByDay.values.toList(); // int list
 
-  final List<double> xpValues;
+            final spots = <FlSpot>[];
+            for (var i = 0; i < values.length; i++) {
+              spots.add(FlSpot(i.toDouble(), values[i].toDouble()));
+            }
 
-  @override
-  Widget build(BuildContext context) {
-    final spots = <FlSpot>[];
-    for (var i = 0; i < xpValues.length; i++) {
-      spots.add(FlSpot(i.toDouble(), xpValues[i]));
-    }
+            final totalXp = sessions.fold<int>(0, (sum, s) => sum + s.xpEarned);
+            final totalSessions = sessions.length;
 
-    final double maxY = ((xpValues.reduce((a, b) => a > b ? a : b) * 1.2).clamp(10, 9999)).toDouble();
+// Tarihi en yeni olanı bul (liste sırasına güvenme)
+            final lastSession = sessions.reduce(
+              (a, b) => a.date.isAfter(b.date) ? a : b,
+            );
 
-    return LineChart(
-      LineChartData(
-        minX: 0,
-        maxX: (xpValues.length - 1).toDouble(),
-        minY: 0,
-        maxY: maxY,
-        gridData: const FlGridData(show: false),
-        borderData: FlBorderData(show: false),
-        titlesData: FlTitlesData(
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 32,
-              interval: maxY / 4,
-            ),
-          ),
-          rightTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              interval: 1,
-              getTitlesWidget: (value, meta) {
-                final dayIndex = value.toInt();
-                if (dayIndex < 0 || dayIndex >= xpValues.length) {
-                  return const SizedBox.shrink();
-                }
-                // örnek: D1, D2, ...
-                return Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text('D${dayIndex + 1}',
-                      style: const TextStyle(fontSize: 10)),
-                );
-              },
-            ),
-          ),
-        ),
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            barWidth: 3,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              applyCutOffY: false,
-              cutOffY: 0,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'XP Progress',
+                    style: textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Track how much XP you earned from your workouts.',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
-class _SessionsList extends StatelessWidget {
-  const _SessionsList({
-    required this.sessions,
-  });
+                  // KPI kartları
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _StatCard(
+                          title: 'Total XP',
+                          value: totalXp.toString(),
+                          icon: Icons.bolt_outlined,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StatCard(
+                          title: 'Sessions',
+                          value: totalSessions.toString(),
+                          icon: Icons.fitness_center_outlined,
+                        ),
+                      ),
+                    ],
+                  ),
 
-  final List<WorkoutSession> sessions;
+                  const SizedBox(height: 24),
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ElevatedButton(
-          onPressed: () {
-            // Bu butonu istersen sonra kaldırırız,
-            // şimdilik Hive persist testine devam edebilir.
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Workout sessions list below'),
+                  // XP line chart
+                  SizedBox(
+                    height: 220,
+                    child: Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: LineChart(
+                          LineChartData(
+                            minY: 0,
+                            gridData: const FlGridData(show: false),
+                            borderData: FlBorderData(
+                              show: true,
+                              border: Border.all(
+                                color:
+                                    colorScheme.outline.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            titlesData: FlTitlesData(
+                              topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              leftTitles: const AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 36,
+                                ),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    final index = value.toInt();
+                                    if (index < 0 || index >= days.length) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    final d = days[index];
+                                    final label = '${d.day}/${d.month}';
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        label,
+                                        style: const TextStyle(fontSize: 10),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: spots,
+                                isCurved: true,
+                                barWidth: 3,
+                                dotData: const FlDotData(show: true),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Text(
+                    'Last Session',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${lastSession.name} • '
+                    '${lastSession.durationMinutes} min • '
+                    '${lastSession.xpEarned} XP',
+                    style: textTheme.bodyMedium,
+                  ),
+                ],
               ),
             );
           },
-          child: const Text('Workout history info'),
         ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: ListView.builder(
-            itemCount: sessions.length,
-            itemBuilder: (context, i) {
-              final s = sessions[i];
-              return ListTile(
-                title: Text(s.name),
-                subtitle: Text(
-                  '${s.durationMinutes} min - ${s.category}',
-                ),
-                trailing: Text('${s.calories} kcal'),
-              );
-            },
-          ),
+      ),
+    );
+  }
+
+  /// Aynı gün içindeki tüm session’ların XP’sini toplayıp
+  /// gün bazında map döner: { 2025-12-02: 320, ... }
+  Map<DateTime, int> _groupXpPerDay(List<WorkoutSession> sessions) {
+    final Map<DateTime, int> xpByDay = {};
+
+    for (final s in sessions) {
+      final d = s.date;
+      final dayKey = DateTime(d.year, d.month, d.day);
+
+      xpByDay.update(
+        dayKey,
+        (prev) => prev + s.xpEarned,
+        ifAbsent: () => s.xpEarned,
+      );
+    }
+
+    // Tarihe göre sırala (eski → yeni)
+    final sortedKeys = xpByDay.keys.toList()..sort();
+    final Map<DateTime, int> sorted = {};
+    for (final k in sortedKeys) {
+      sorted[k] = xpByDay[k]!;
+    }
+    return sorted;
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+
+  const _StatCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      elevation: 0,
+      color: colorScheme.surfaceContainerHighest.withAlpha(179),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(icon, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

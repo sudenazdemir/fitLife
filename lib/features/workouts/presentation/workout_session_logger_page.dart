@@ -207,11 +207,14 @@ class _WorkoutSessionLoggerPageState
       xpEarned: xp, // 👈 burada XP bilgisini ekliyoruz
     );
 
+    // Repository provider’ı kullan
     final repo = ref.read(workoutSessionRepositoryProvider);
 
     try {
-      // ---- ASYNC GAP: burada context kullanmıyoruz ----
       await repo.addSession(session);
+
+      // Stats’teki FutureProvider’ı invalid et ki yeniden yüklensin
+      ref.invalidate(workoutSessionsProvider);
 
       // Kaydettikten sonra Workouts ekranına dön
       router.goNamed(RouteNames.workouts);
@@ -227,5 +230,4 @@ class _WorkoutSessionLoggerPageState
       }
     }
   }
-
 }
