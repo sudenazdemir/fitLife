@@ -13,4 +13,7 @@ void main() {
     // Ana sayfadaki bir metni kontrol etmek istersen:
     // expect(find.textContaining('FitLife'), findsWidgets);
   });
+ 
+  
+  
 }
