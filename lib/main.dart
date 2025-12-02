@@ -11,7 +11,7 @@ Future<void> main() async {
   await Hive.initFlutter();
 
   Hive.registerAdapter(WorkoutSessionAdapter());
-  await Hive.openBox<WorkoutSession>('workout_sessions_v2');
+  await Hive.openBox<WorkoutSession>('workout_sessions_v3');
 
   runApp(const ProviderScope(child: FitlifeApp()));
 }

@@ -6,6 +6,7 @@ import 'package:fitlife/features/workouts/domain/models/workout_session.dart';
 import 'package:fitlife/features/workouts/domain/providers/workout_session_providers.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fitlife/core/constants.dart';
+import 'package:fitlife/features/workouts/domain/providers/xp_engine_provider.dart';
 
 class WorkoutSessionLoggerPage extends ConsumerStatefulWidget {
   final Workout? workout;
@@ -176,10 +177,13 @@ class _WorkoutSessionLoggerPageState
     setState(() => _isSaving = true);
 
     // XP hesabı (senin acceptance criteria’sı için önemli)
-    final xp = _calculateXp(
+    final xpEngine = ref.read(xpEngineProvider);
+
+    final xp = xpEngine.calculateXp(
       durationMinutes: durationMinutes,
       sets: sets,
       reps: reps,
+      difficulty: widget.workout?.difficulty,
     );
 
     // XP bilgisini kullanıcıya hemen gösteriyoruz (async öncesi)
@@ -200,6 +204,7 @@ class _WorkoutSessionLoggerPageState
       durationMinutes: durationMinutes ?? 0,
       calories: workout?.calories ?? 0,
       date: now,
+      xpEarned: xp, // 👈 burada XP bilgisini ekliyoruz
     );
 
     final repo = ref.read(workoutSessionRepositoryProvider);
@@ -223,25 +228,4 @@ class _WorkoutSessionLoggerPageState
     }
   }
 
-  int _calculateXp({
-    int? durationMinutes,
-    int? sets,
-    int? reps,
-  }) {
-    int xp = 0;
-
-    if (durationMinutes != null && durationMinutes > 0) {
-      xp += durationMinutes * 5; // dakika başına 5 XP
-    }
-
-    if (sets != null && sets > 0 && reps != null && reps > 0) {
-      xp += sets * reps; // her rep için 1 XP
-    }
-
-    if (xp == 0) {
-      xp = 10; // minimum XP
-    }
-
-    return xp;
-  }
 }

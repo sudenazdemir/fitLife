@@ -25,6 +25,9 @@ class WorkoutSession {
   @HiveField(6)
   final String id;
 
+   @HiveField(7) // 👈 yeni alan (bir önceki index'ten sonrasını kullan)
+  final int xpEarned;
+
   WorkoutSession({
     required this.workoutId,
     required this.name,
@@ -33,5 +36,6 @@ class WorkoutSession {
     required this.calories,
     required this.date,
     required this.id,
+      this.xpEarned = 0, // 👈 default 0
   });
 }

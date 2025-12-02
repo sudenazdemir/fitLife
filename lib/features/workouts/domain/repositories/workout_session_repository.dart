@@ -2,7 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:fitlife/features/workouts/domain/models/workout_session.dart';
 
 class WorkoutSessionRepository {
-  static const _boxName = 'workout_sessions_v2';
+  static const _boxName = 'workout_sessions_v3';
 
   Future<Box<WorkoutSession>> _openBox() async {
     return Hive.openBox<WorkoutSession>(_boxName);
