@@ -27,6 +27,7 @@ final class Routes {
   static const stats = '/stats';
    static const workoutDetail = '/workouts/:id';
   static const workoutSessionLogger = '/workouts/:id/session';
+  static const exerciseLibrary = '/exercises';
 }
 
 final class RouteNames {
@@ -35,11 +36,23 @@ final class RouteNames {
   static const stats = 'stats';
   static const workoutDetail = 'workout-detail';
   static const workoutSessionLogger = 'workout-session-logger';
+  static const exerciseLibrary = 'exerciseLibrary';
 }
 
 final class WorkoutCategories {
+  static const all = 'all'; // özel değer (UI’de All yazacağız)
+
   static const fullBody = 'Full Body';
   static const upperBody = 'Upper Body';
-  static const lowerBody = 'Lower Body';
   static const cardio = 'Cardio';
+  static const strength = 'Strength';
+  static const mobility = 'Mobility';
+
+  static const values = <String>[
+    fullBody,
+    upperBody,
+    cardio,
+    strength,
+    mobility,
+  ];
 }

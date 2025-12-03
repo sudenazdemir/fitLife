@@ -9,6 +9,7 @@ import 'package:fitlife/features/stats/presentation/stats_page.dart';
 import 'package:fitlife/features/workouts/presentation/workout_detail_page.dart';
 import 'package:fitlife/features/workouts/presentation/workout_session_logger_page.dart';
 import 'package:fitlife/features/workouts/domain/models/workout.dart';
+import 'package:fitlife/features/exercise_library/presentation/exercise_library_page.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
@@ -56,6 +57,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final workout = extra is Workout ? extra : null;
               return WorkoutSessionLoggerPage(workout: workout);
             },
+          ),
+          GoRoute(
+            path: Routes.exerciseLibrary,
+            name: RouteNames.exerciseLibrary,
+            builder: (context, state) => const ExerciseLibraryPage(),
           ),
         ],
       ),
