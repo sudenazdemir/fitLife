@@ -28,6 +28,7 @@ final class Routes {
    static const workoutDetail = '/workouts/:id';
   static const workoutSessionLogger = '/workouts/:id/session';
   static const exerciseLibrary = '/exercises';
+  static const routineRunner = '/routine-runner'; // 👈 yeni
 }
 
 final class RouteNames {
@@ -37,6 +38,7 @@ final class RouteNames {
   static const workoutDetail = 'workout-detail';
   static const workoutSessionLogger = 'workout-session-logger';
   static const exerciseLibrary = 'exerciseLibrary';
+  static const routineRunner = 'routineRunner'; // 👈 yeni
 }
 
 final class WorkoutCategories {
