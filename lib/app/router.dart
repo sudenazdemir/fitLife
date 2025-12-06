@@ -11,6 +11,10 @@ import 'package:fitlife/features/workouts/presentation/workout_session_logger_pa
 import 'package:fitlife/features/workouts/domain/models/workout.dart';
 import 'package:fitlife/features/exercise_library/presentation/exercise_library_page.dart';
 import 'package:fitlife/features/routines/presentation/routine_runner_page.dart';
+import 'package:fitlife/features/profile/presentation/profile_page.dart';
+import 'package:fitlife/features/profile/presentation/onboarding_page.dart';
+import 'package:fitlife/features/profile/domain/models/user_profile.dart';
+
 
 final _rootKey = GlobalKey<NavigatorState>();
 
@@ -68,6 +72,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: Routes.routineRunner,
             name: RouteNames.routineRunner,
             builder: (context, state) => const RoutineRunnerPage(),
+          ),
+          GoRoute(
+            path: Routes.profile,
+            name: RouteNames.profile,
+            builder: (context, state) => const ProfilePage(),
+          ),
+          GoRoute(
+            path: Routes.onboarding,
+            name: RouteNames.onboarding,
+            builder: (context, state) {
+              final extra = state.extra;
+              return OnboardingPage(
+                initialProfile: extra is UserProfile ? extra : null,
+              );
+            },
           ),
         ],
       ),

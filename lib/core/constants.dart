@@ -29,6 +29,8 @@ final class Routes {
   static const workoutSessionLogger = '/workouts/:id/session';
   static const exerciseLibrary = '/exercises';
   static const routineRunner = '/routine-runner'; // 👈 yeni
+  static const profile = '/profile';
+  static const onboarding = '/onboarding';
 }
 
 final class RouteNames {
@@ -39,6 +41,8 @@ final class RouteNames {
   static const workoutSessionLogger = 'workout-session-logger';
   static const exerciseLibrary = 'exerciseLibrary';
   static const routineRunner = 'routineRunner'; // 👈 yeni
+   static const profile = 'profile';
+  static const onboarding = 'onboarding';
 }
 
 final class WorkoutCategories {

@@ -60,6 +60,12 @@ class ShellPage extends ConsumerWidget {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person_outline),
+            onPressed: () {
+              context.push(Routes.profile);
+            },
+          ),
+          IconButton(
             icon: Icon(
               mode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
             ),
