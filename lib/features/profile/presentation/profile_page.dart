@@ -1,10 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:fitlife/core/constants.dart';
 import 'package:fitlife/features/profile/domain/models/user_profile.dart';
 import 'package:fitlife/features/profile/domain/providers/user_profile_providers.dart';
 import 'package:go_router/go_router.dart';
-import 'package:fitlife/core/constants.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -16,30 +17,28 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
+  void _logout(BuildContext context) {
+    // Fire-and-forget, async gap yok -> analyzer uyarısı da yok
+    FirebaseAuth.instance.signOut();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Signed out')),
+    );
+
+    // İstersen burayı Routes.auth yaparsın, ama home güvenli:
+    context.go(Routes.home);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(userProfileFutureProvider);
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final firebaseUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        actions: [
-          IconButton(
-            tooltip: 'Logout',
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              // Firebase oturumunu kapat
-              await FirebaseAuth.instance.signOut();
-
-              if (!context.mounted) return;
-
-              // Auth ekranına dön (login/register sayfan hangi route ise onu kullan)
-              context.go(Routes.auth);
-            },
-          ),
-        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -52,6 +51,7 @@ class ProfilePage extends ConsumerWidget {
               child: Text('Failed to load profile: $e'),
             ),
             data: (profile) {
+              // HENÜZ local profile yoksa:
               if (profile == null) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,23 +67,40 @@ class ProfilePage extends ConsumerWidget {
                       'Create a profile to personalize your FitLife experience.',
                       style: textTheme.bodyMedium,
                     ),
+                    const SizedBox(height: 16),
+                    if (firebaseUser != null) ...[
+                      Text(
+                        'Logged in as: ${firebaseUser.email}',
+                        style: textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     const Spacer(),
                     SafeArea(
                       top: false,
                       minimum: const EdgeInsets.only(bottom: 8),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: () =>
-                              _openOnboarding(context, profile: null),
-                          child: const Text('Create Profile'),
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          FilledButton(
+                            onPressed: () =>
+                                _openOnboarding(context, profile: null),
+                            child: const Text('Create Profile'),
+                          ),
+                          const SizedBox(height: 8),
+                          if (firebaseUser != null)
+                            OutlinedButton(
+                              onPressed: () => _logout(context),
+                              child: const Text('Logout'),
+                            ),
+                        ],
                       ),
                     ),
                   ],
                 );
               }
 
+              // Local profile VAR:
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -117,6 +134,13 @@ class ProfilePage extends ConsumerWidget {
                               style: textTheme.bodyMedium,
                             ),
                           ],
+                          if (firebaseUser != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              firebaseUser.email ?? '',
+                              style: textTheme.bodySmall,
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -137,13 +161,21 @@ class ProfilePage extends ConsumerWidget {
                   SafeArea(
                     top: false,
                     minimum: const EdgeInsets.only(bottom: 8),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: () =>
-                            _openOnboarding(context, profile: profile),
-                        child: const Text('Edit Profile'),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        FilledButton(
+                          onPressed: () =>
+                              _openOnboarding(context, profile: profile),
+                          child: const Text('Edit Profile'),
+                        ),
+                        const SizedBox(height: 8),
+                        if (firebaseUser != null)
+                          OutlinedButton(
+                            onPressed: () => _logout(context),
+                            child: const Text('Logout'),
+                          ),
+                      ],
                     ),
                   ),
                 ],
