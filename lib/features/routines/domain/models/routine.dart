@@ -2,7 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'routine.g.dart';
 
-@HiveType(typeId: 3) // ⚠️ WorkoutSession'dan FARKLI bir id olsun (0/1/2 değilse 3 iyi)
+@HiveType(typeId: 30) // ⚠️ typeId'yi projedeki diğer modellerle çakışmayacak şekilde ayarla
 class Routine {
   @HiveField(0)
   final String id;
@@ -10,11 +10,11 @@ class Routine {
   @HiveField(1)
   final String name;
 
-  /// 1 = Monday ... 7 = Sunday
+  /// 0 = Monday, 6 = Sunday gibi düşünebiliriz (veya sen nasıl karar verdiysen)
   @HiveField(2)
   final List<int> daysOfWeek;
 
-  /// Workout IDs in order
+  /// Bu rutinin içinde hangi workout'lar var (Workout.id listesi)
   @HiveField(3)
   final List<String> workoutIds;
 

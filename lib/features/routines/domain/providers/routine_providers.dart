@@ -6,7 +6,8 @@ final routineRepositoryProvider = Provider<RoutineRepository>((ref) {
   return RoutineRepository();
 });
 
-final routinesProvider = FutureProvider<List<Routine>>((ref) async {
-  final repo = ref.read(routineRepositoryProvider);
+final routinesFutureProvider =
+    FutureProvider<List<Routine>>((ref) async {
+  final repo = ref.watch(routineRepositoryProvider);
   return repo.getAllRoutines();
 });

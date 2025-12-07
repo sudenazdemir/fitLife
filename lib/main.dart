@@ -8,8 +8,6 @@ import 'package:fitlife/features/workouts/domain/models/workout_session.dart';
 import 'package:fitlife/features/profile/domain/models/user_profile.dart';
 import 'package:fitlife/features/routines/domain/models/routine.dart';
 
-
-
 // main.dart içinde main()’de:
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,11 +16,12 @@ void main() async {
 
   await Hive.initFlutter();
   Hive.registerAdapter(WorkoutSessionAdapter());
-   Hive.registerAdapter(UserProfileAdapter()); // 👈 BUNU EKLE
-    Hive.registerAdapter(RoutineAdapter()); // 👈 BUNU EKLE
+  Hive.registerAdapter(UserProfileAdapter()); // 👈 BUNU EKLE
+  Hive.registerAdapter(RoutineAdapter()); // 👈 BUNU EKLE
 
   // ❗ İSİM BURADA AYNI OLMALI
   await Hive.openBox<WorkoutSession>('workout_sessions_v3');
-
+  await Hive.openBox<UserProfile>('user_profile');
+  await Hive.openBox<Routine>('routines');
   runApp(const ProviderScope(child: FitlifeApp()));
 }

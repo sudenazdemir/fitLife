@@ -82,7 +82,8 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
 
     final repo = ref.read(routineRepositoryProvider);
 
-    final id = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}';
+    final id =
+        '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}';
 
     final routine = Routine(
       id: id,
@@ -93,8 +94,8 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
     );
 
     try {
-      await repo.addRoutine(routine);
-      ref.invalidate(routinesProvider);
+      await repo.saveRoutine(routine); // ← DOĞRU METHOD
+      ref.invalidate(routinesFutureProvider); // ← DOĞRU PROVIDER
 
       messenger.showSnackBar(
         SnackBar(
@@ -124,7 +125,6 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
     final textTheme = theme.textTheme;
 
     final workoutsAsync = ref.watch(filteredWorkoutsProvider);
-
 
     return Scaffold(
       appBar: AppBar(
@@ -173,13 +173,11 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
                   Text(
                     'Days of the week',
                     style: textTheme.titleSmall,
                   ),
                   const SizedBox(height: 8),
-
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -201,14 +199,12 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
                       );
                     }),
                   ),
-
                   const SizedBox(height: 24),
                   Text(
                     'Workouts in this routine',
                     style: textTheme.titleSmall,
                   ),
                   const SizedBox(height: 8),
-
                   Expanded(
                     child: ListView.builder(
                       itemCount: workouts.length,
@@ -235,7 +231,6 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
                       },
                     ),
                   ),
-
                   SafeArea(
                     top: false,
                     minimum: const EdgeInsets.only(top: 8, bottom: 8),
