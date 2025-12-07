@@ -31,6 +31,9 @@ final class Routes {
   static const routineRunner = '/routine-runner'; // 👈 yeni
   static const profile = '/profile';
   static const onboarding = '/onboarding';
+  static const routineCreate = '/routines/create'; // 👈
+   static const intro = '/intro';
+  static const auth = '/auth';
 }
 
 final class RouteNames {
@@ -43,6 +46,9 @@ final class RouteNames {
   static const routineRunner = 'routineRunner'; // 👈 yeni
    static const profile = 'profile';
   static const onboarding = 'onboarding';
+  static const routineCreate = 'routineCreate'; // 👈
+  static const intro = 'intro';
+  static const auth = 'auth';
 }
 
 final class WorkoutCategories {

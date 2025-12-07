@@ -4,6 +4,7 @@ import 'package:fitlife/features/profile/domain/models/user_profile.dart';
 import 'package:fitlife/features/profile/domain/providers/user_profile_providers.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fitlife/core/constants.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -24,6 +25,21 @@ class ProfilePage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
+        actions: [
+          IconButton(
+            tooltip: 'Logout',
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              // Firebase oturumunu kapat
+              await FirebaseAuth.instance.signOut();
+
+              if (!context.mounted) return;
+
+              // Auth ekranına dön (login/register sayfan hangi route ise onu kullan)
+              context.go(Routes.auth);
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(

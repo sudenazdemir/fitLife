@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1092202913454",
+    "project_id": "fitlife-d53c3",
+    "storage_bucket": "fitlife-d53c3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1092202913454:android:5e64c33abf62b4e855573f",
+        "android_client_info": {
+          "package_name": "com.fitlife.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgANgU5Do3G-NTeNUvo8YB2oY4LJbSsdE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

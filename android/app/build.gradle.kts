@@ -1,8 +1,8 @@
 plugins {
     id("com.android.application")
     kotlin("android")
-    // Android ve Kotlin’den sonra:
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services") // 🔥 Firebase plugin (Doğru yer)
 }
 
 android {
@@ -12,7 +12,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     defaultConfig {
-        applicationId = "com.fitlife.app" // tek tip olsun
+        applicationId = "com.fitlife.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -29,7 +29,6 @@ android {
 
     buildTypes {
         release {
-            // kendi keystore’unu ekleyene kadar:
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -37,4 +36,15 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // 🔥 Firebase BOM — DOĞRU YER
+    implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
+
+    // 🔥 Analytics (isteğe bağlı)
+    implementation("com.google.firebase:firebase-analytics")
+
+    // 🔥 Auth (gerekli)
+    implementation("com.google.firebase:firebase-auth")
 }

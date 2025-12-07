@@ -1,153 +1,150 @@
-# FitLife — Gamified Fitness Tracker (M1 Release)
+# FitLife — Gamified Fitness Tracker
 
-FitLife is a gamified fitness tracker that helps users stay consistent with their workouts by turning training into an XP / level / streak based experience.
-
-This release represents **Milestone M1 – Core App Setup**.
-
----
-
-## 🚀 M1 Features (Completed)
-
-- **Routing & Navigation**
-  - `/`, `/workouts`, `/stats` defined with GoRouter
-  - Shell layout with Bottom Navigation
-- **Theme Switching**
-  - Light / Dark mode toggle using Riverpod StateProvider
-- **Workout Model**
-  - JSON-serializable `Workout` class
-- **Mock Repository**
-  - In-memory mock workouts list
-  - Workouts rendered on `/workouts`
-- **Local Persistent Storage**
-  - Hive setup and initialization
-  - `WorkoutSession` model stored in a Hive box
-  - Repository + Riverpod providers
-  - Data persists between app restarts
-- **Stats & Visualization**
-  - Simple XP line chart using `fl_chart` on `/stats`
-  - Workout sessions list rendered below chart
-- **Code Quality & CI**
-  - `flutter analyze` → 0 warnings
-  - 1–2 widget tests (theme toggle, initial navigation)
-  - GitHub Actions CI: `flutter analyze` + `flutter test --coverage`
+FitLife is a gamified mobile fitness application built with Flutter.  
+Users level up, earn XP, track progress, build routines, and follow structured workout flows.
 
 ---
 
-## 🧱 Project Architecture
+# 🚀 Milestone M2 — Completed
 
+This milestone adds full XP Engine integration, Workout Session Logger, Routine Runner MVP, Exercise Library, and Firebase Authentication.
+
+---
+
+## ✅ M2 Features (Completed)
+
+### 🔥 Workout XP Engine
+- Dynamic XP calculation:
+  - Duration-based XP  
+  - Difficulty modifiers (Easy / Medium / Hard)  
+  - Set & Rep bonus system  
+- Unit tests for XP logic  
+- Consistent, deterministic results  
+
+---
+
+### 📊 Real Stats Page (XP from Hive)
+- XP is now read from real saved sessions  
+- Daily XP grouped and shown as line chart  
+- Total XP  
+- Total sessions  
+- Last session details  
+
+---
+
+### 🏋️ Workout Session Logger (MVP)
+- Duration OR sets & reps logging  
+- XP calculated immediately  
+- Sessions saved to Hive  
+- Async-safe implementation  
+- Redirects back to the workout list  
+
+---
+
+### 🔁 Routine Runner (MVP)
+- Automatically flows through a routine:
+  - Exercise → Sets → Timer → Rest → Next  
+- Countdown timers  
+- Auto-advance logic  
+- Final XP summary  
+- Routine sessions saved to Hive  
+- Integrated with XP Engine  
+
+---
+
+### 📚 Exercise Library
+- Basic exercise library UI  
+- Filterable workouts  
+- Navigable from Workouts page  
+
+---
+
+### 🎭 Workout Categories + Filtering
+- Category chips added  
+- Provider-based filtering  
+- All workouts / Full Body / Upper / Lower / Abs…  
+
+---
+
+### 👤 Firebase Authentication
+- Email + Password login  
+- Register new account  
+- Persisted session until logout  
+- Logout button added to Profile  
+- Auth guard redirects  
+- Uses Firebase Auth SDK  
+
+---
+
+### 💾 Local Profile (Hive)
+- User profile stored locally  
+- Name, avatar, goal  
+- Onboarding screen  
+- Edit profile  
+- Loads automatically on app start  
+
+---
+
+# 🧱 Project Architecture
+
+```
 lib/
  ├── app/
- │    ├── app.dart                # Root widget (MaterialApp.router)
- │    └── router.dart             # GoRouter config + ShellRoute
+ │    ├── app.dart
+ │    └── router.dart
  │
  ├── core/
  │    ├── constants.dart
- │    └── theme_provider.dart
+ │    └── utils/
+ │         └── result.dart
  │
  ├── features/
+ │    ├── auth/
  │    ├── home/
- │    │    └── presentation/
- │    │         └── home_page.dart
- │
- │    ├── stats/
- │    │    └── presentation/
- │    │         └── stats_page.dart
- │
  │    ├── workouts/
- │    │    ├── data/
- │    │    │    └── mock_workouts_repository.dart
- │    │    ├── domain/
- │    │    │    ├── models/
- │    │    │    │    ├── workout.dart
- │    │    │    │    ├── workout.g.dart
- │    │    │    │    ├── workout_session.dart
- │    │    │    │    └── workout_session.g.dart
- │    │    │    ├── providers/
- │    │    │    │    ├── workouts_provider.dart
- │    │    │    │    └── workout_session_providers.dart
- │    │    │    └── repositories/
- │    │    │         ├── workouts_repository.dart
- │    │    │         └── workout_session_repository.dart
- │    │    └── presentation/
- │    │         └── workouts_page.dart
+ │    ├── routines/
+ │    ├── stats/
+ │    ├── profile/
+ │    └── exercise_library/
  │
- ├── features/shell/
- │    └── presentation/
- │         └── shell_page.dart
- │
- └── main.dart                    # Hive init + ProviderScope
+ └── main.dart
+```
 
 ---
 
-## 🗺️ Roadmap
+# 📅 Roadmap
 
-### **M1 – Core App Setup (COMPLETED ✅)**
-
-| Area           | Feature                              | Status |
-|----------------|--------------------------------------|--------|
-| Routing        | GoRouter setup (+ Shell)             | ✅     |
-| Navigation     | Bottom NavigationBar                 | ✅     |
-| Theming        | Light / Dark toggle                  | ✅     |
-| Models         | Workout model (JSON)                 | ✅     |
-| Data           | Mock workouts repository             | ✅     |
-| Local Storage  | Hive + WorkoutSession persistence    | ✅     |
-| Visualization  | XP line chart on `/stats`            | ✅     |
-| Quality        | `flutter analyze` = 0 warnings       | ✅     |
-| Testing        | Widget tests                         | ✅     |
-| CI             | GitHub Actions (analyze + test)      | ✅     |
-| Docs           | README updated                       | ✅     |
+| Milestone | Status | Description |
+|----------|--------|-------------|
+| **M1 – Core App Setup** | ✅ Completed | Routing, Theming, Mock Data, Hive Setup, Initial Stats, CI |
+| **M2 – Workouts & XP Engine** | ✅ Completed | XP Engine, Session Logger, Stats Integration, Exercise Library, Firebase Auth |
+| **M3 – Routines & Measurements** | 🔄 Next | Routine Creator, Routine List, Measurement Tracking, Stats v2 |
+| **M4 – Final Polish & Submission** | 🔜 Pending | UI Polish, Stability, Testing, Release Build, Documentation |
 
 ---
 
-### **M2 – Workouts Experience (NEXT)**
-
-- Workout detail screen  
-- Improved workout logging UX  
-- Connect Workout → WorkoutSession flow  
-- Basic measurements (weight, body metrics)
-
-### **M3 – Gamification Layer**
-
-- XP logic  
-- Level system  
-- Streak tracking  
-- Achievements  
-- Enhanced stats dashboard
-
-### **M4 – Routines & Reminders**
-
-- Create / edit workout routines  
-- Reminders & notifications  
-- Weekly goals  
-
----
-
-## 🔖 Release Notes — M1
-
-**Tag:** `m1`  
-**Version:** `0.1.0`  
-
-This milestone focuses on setting up the core architecture of the app:
-navigation, theming, core models, mock data, local storage with Hive,
-basic stats visualization and a working CI pipeline.
-
----
-
-## 📦 Tech Stack
+# 📦 Tech Stack
 
 - Flutter 3.x  
 - Riverpod 2.x  
 - GoRouter  
 - Hive  
+- Firebase Auth  
 - fl_chart  
 - GitHub Actions CI  
 
 ---
 
-## 🧪 Tests
+# 🧪 Tests
 
-- Theme toggle widget test (AppBar)
-- Initial navigation test (Home route)
-- CI pipeline includes:
-  - `flutter analyze`
-  - `flutter test --coverage`
+- Navigation tests  
+- Theme toggle tests  
+- XP Engine unit tests  
+- App boot test  
+
+---
+
+# 🔖 Version
+
+**Tag:** m2  
+**Version:** 0.2.0  

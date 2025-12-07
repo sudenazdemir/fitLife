@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'package:fitlife/app/app.dart';
 import 'package:fitlife/features/workouts/domain/models/workout_session.dart';
 import 'package:fitlife/features/profile/domain/models/user_profile.dart';
+import 'package:fitlife/features/routines/domain/models/routine.dart';
+
 
 
 // main.dart içinde main()’de:
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await Firebase.initializeApp();
+
   await Hive.initFlutter();
   Hive.registerAdapter(WorkoutSessionAdapter());
    Hive.registerAdapter(UserProfileAdapter()); // 👈 BUNU EKLE
+    Hive.registerAdapter(RoutineAdapter()); // 👈 BUNU EKLE
 
   // ❗ İSİM BURADA AYNI OLMALI
   await Hive.openBox<WorkoutSession>('workout_sessions_v3');
