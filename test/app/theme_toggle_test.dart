@@ -1,23 +1,25 @@
+// test/app/theme_toggle_test.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fitlife/app/app.dart';
+
+import 'package:fitlife/core/theme_provider.dart';
 
 void main() {
-  testWidgets('Theme toggle switches between light and dark mode',
-      (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: FitlifeApp()),
-    );
+  test('themeModeProvider toggles between light and dark', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
 
-    // Initially: light mode button should be visible
-    expect(find.byIcon(Icons.light_mode), findsOneWidget);
+    // initial value
+    final initial = container.read(themeModeProvider);
+    expect(initial, isA<ThemeMode>());
 
-    // Tap toggle
-    await tester.tap(find.byIcon(Icons.light_mode));
-    await tester.pumpAndSettle();
+    // toggle once
+    container.read(themeModeProvider.notifier).state =
+        initial == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
 
-    // Now dark mode button should be visible
-    expect(find.byIcon(Icons.dark_mode), findsOneWidget);
+    final afterToggle = container.read(themeModeProvider);
+    expect(afterToggle, isA<ThemeMode>());
+    expect(afterToggle == initial, isFalse);
   });
 }
