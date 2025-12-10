@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fitlife/core/constants.dart';
-import 'package:go_router/go_router.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -37,15 +35,7 @@ class HomePage extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            // home_page.dart içinde build()’de uygun bir yere:
-            TextButton.icon(
-              onPressed: () {
-                context.push(Routes.routineRunner);
-              },
-              icon: const Icon(Icons.play_circle_outline),
-
-              label: const Text('Start Demo Routine'),
-            ),
+           
           ],
         ),
       ),

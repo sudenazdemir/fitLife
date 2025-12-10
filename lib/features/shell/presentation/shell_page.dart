@@ -37,6 +37,9 @@ class ShellPage extends ConsumerWidget {
       case 2:
         context.go(Routes.stats);
         break;
+      case 3:
+        context.go(Routes.routines);
+        break;
     }
   }
 
@@ -95,6 +98,10 @@ class ShellPage extends ConsumerWidget {
             icon: Icon(Icons.bar_chart_outlined),
             selectedIcon: Icon(Icons.bar_chart),
             label: 'Stats',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month),
+            label: 'Routines',
           ),
         ],
       ),

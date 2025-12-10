@@ -11,7 +11,6 @@ import 'package:fitlife/features/workouts/presentation/workout_detail_page.dart'
 import 'package:fitlife/features/workouts/presentation/workout_session_logger_page.dart';
 import 'package:fitlife/features/workouts/domain/models/workout.dart';
 import 'package:fitlife/features/exercise_library/presentation/exercise_library_page.dart';
-import 'package:fitlife/features/routines/presentation/routine_runner_page.dart';
 import 'package:fitlife/features/profile/presentation/profile_page.dart';
 import 'package:fitlife/features/profile/presentation/onboarding_page.dart';
 import 'package:fitlife/features/profile/domain/models/user_profile.dart';
@@ -21,6 +20,11 @@ import 'package:fitlife/features/routines/presentation/routine_create_page.dart'
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fitlife/features/intro/presentation/intro_page.dart';
 import 'package:fitlife/features/auth/presentation/auth_page.dart';
+import 'package:fitlife/features/routines/presentation/routine_list_page.dart';
+import 'package:fitlife/features/routines/presentation/routine_detail_page.dart';
+import 'package:fitlife/features/routines/domain/models/routine.dart';
+import 'package:fitlife/features/routines/presentation/routine_runner_page.dart';
+
 
 final _rootKey = GlobalKey<NavigatorState>();
 
@@ -114,7 +118,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: Routes.routineRunner,
             name: RouteNames.routineRunner,
-            builder: (context, state) => const RoutineRunnerPage(),
+            builder: (context, state) {
+              final extra = state.extra;
+              final routine = extra is Routine ? extra : null;
+              return RoutineRunnerPage(routine: routine);
+            },
           ),
           GoRoute(
             path: Routes.profile,
@@ -135,6 +143,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: Routes.routineCreate,
             name: RouteNames.routineCreate,
             builder: (context, state) => const RoutineCreatePage(),
+          ),
+          GoRoute(
+            path: Routes.routines,
+            name: RouteNames.routines,
+            builder: (context, state) => const RoutineListPage(),
+          ),
+          GoRoute(
+            path: Routes.routineDetail,
+            name: RouteNames.routineDetail,
+            builder: (context, state) {
+              final extra = state.extra;
+              if (extra is! Routine) {
+                return const Scaffold(
+                  body: Center(child: Text('Routine not found')),
+                );
+              }
+              return RoutineDetailPage(routine: extra);
+            },
           ),
         ],
       ),
