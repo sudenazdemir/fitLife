@@ -181,7 +181,7 @@ class ProfilePage extends ConsumerWidget {
                     ),
                   ),
                   // Çizgi ekleyerek ayırabiliriz
-                  Divider(color: colorScheme.outlineVariant.withOpacity(0.3)),
+                 Divider(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
 
                   const Spacer(),
                   
