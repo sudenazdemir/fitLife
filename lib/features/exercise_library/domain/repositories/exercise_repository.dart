@@ -7,9 +7,9 @@ abstract class ExerciseRepository {
 class MockExerciseRepository implements ExerciseRepository {
   @override
   Future<List<Exercise>> getExercises() async {
-    // Basit mock data
+    // const kaldırıldı çünkü Exercise artık HiveObject extends ediyor
     return [
-      const Exercise(
+       Exercise(
         id: 'ex1',
         name: 'Push Up',
         muscleGroup: 'Chest',
@@ -18,7 +18,7 @@ class MockExerciseRepository implements ExerciseRepository {
         description:
             'A basic bodyweight exercise targeting chest, shoulders and triceps.',
       ),
-     const Exercise(
+      Exercise(
         id: 'ex2',
         name: 'Squat',
         muscleGroup: 'Legs',
@@ -27,7 +27,7 @@ class MockExerciseRepository implements ExerciseRepository {
         description:
             'Lower body compound movement focusing on quads and glutes.',
       ),
-      const Exercise(
+      Exercise(
         id: 'ex3',
         name: 'Deadlift',
         muscleGroup: 'Back',
@@ -36,7 +36,7 @@ class MockExerciseRepository implements ExerciseRepository {
         description:
             'Heavy compound lift working posterior chain and grip strength.',
       ),
-      const Exercise(
+      Exercise(
         id: 'ex4',
         name: 'Plank',
         muscleGroup: 'Core',

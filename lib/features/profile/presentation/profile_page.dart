@@ -1,11 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:fitlife/core/constants.dart';
 import 'package:fitlife/features/profile/domain/models/user_profile.dart';
 import 'package:fitlife/features/profile/domain/providers/user_profile_providers.dart';
-import 'package:go_router/go_router.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -18,14 +18,12 @@ class ProfilePage extends ConsumerWidget {
   }
 
   void _logout(BuildContext context) {
-    // Fire-and-forget, async gap yok -> analyzer uyarısı da yok
     FirebaseAuth.instance.signOut();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Signed out')),
     );
 
-    // İstersen burayı Routes.auth yaparsın, ama home güvenli:
     context.go(Routes.home);
   }
 
@@ -34,6 +32,7 @@ class ProfilePage extends ConsumerWidget {
     final profileAsync = ref.watch(userProfileFutureProvider);
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final colorScheme = theme.colorScheme; // Renkleri kullanmak için
     final firebaseUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
@@ -104,6 +103,7 @@ class ProfilePage extends ConsumerWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // --- HEADER ---
                   Row(
                     children: [
                       CircleAvatar(
@@ -145,19 +145,47 @@ class ProfilePage extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  
+                  const SizedBox(height: 32),
+
+                  // --- 🆕 TRACKING MENU SECTION ---
                   Text(
-                    'Your Profile',
-                    style: textTheme.titleMedium?.copyWith(
+                    'Tracking & Stats',
+                    style: textTheme.labelLarge?.copyWith(
+                      color: colorScheme.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'This profile is stored locally on your device and works fully offline.',
-                    style: textTheme.bodyMedium,
+                  
+                  // Body Measurements Tile
+                  Material(
+                    color: Colors.transparent,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.straighten, color: colorScheme.primary),
+                      ),
+                      title: const Text('Body Measurements'),
+                      subtitle: const Text('Log weight, body fat & measurements'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                         // 🚀 Measurements sayfasına yönlendirme
+                         context.push(Routes.measurements);
+                      },
+                    ),
                   ),
+                  // Çizgi ekleyerek ayırabiliriz
+                  Divider(color: colorScheme.outlineVariant.withOpacity(0.3)),
+
                   const Spacer(),
+                  
+                  // --- BOTTOM ACTIONS ---
                   SafeArea(
                     top: false,
                     minimum: const EdgeInsets.only(bottom: 8),

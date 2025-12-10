@@ -36,6 +36,7 @@ final class Routes {
   static const auth = '/auth';
   static const routines = '/routines';
 static const routineDetail = '/routine-detail';
+static const measurements = '/measurements'; // 👈 YENİ
 
 }
 
@@ -54,6 +55,7 @@ final class RouteNames {
   static const auth = 'auth';
   static const routines = 'routines';
   static const routineDetail = 'routineDetail';
+  static const measurements = 'measurements'; // 👈 YENİ
 }
 
 final class WorkoutCategories {

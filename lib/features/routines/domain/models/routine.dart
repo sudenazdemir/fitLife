@@ -2,7 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'routine.g.dart';
 
-@HiveType(typeId: 30) // ⚠️ typeId'yi projedeki diğer modellerle çakışmayacak şekilde ayarla
+@HiveType(typeId: 1) // ⚠️ typeId'yi projedeki diğer modellerle çakışmayacak şekilde ayarla
 class Routine {
   @HiveField(0)
   final String id;

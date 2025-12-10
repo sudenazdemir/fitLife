@@ -1,9 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart'; // pubspec.yaml'a intl eklemeyi unutma
+import 'package:intl/intl.dart';
 
-// Yukarıda yazdığım provider dosyasını import et
+import 'package:fitlife/features/stats/domain/models/stats_data.dart';
 import 'package:fitlife/features/stats/domain/providers/stats_provider.dart';
 
 class StatsPage extends ConsumerWidget {
@@ -80,7 +80,7 @@ class StatsPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 250, // Grafik Yüksekliği
+                    height: 250,
                     child: _XpChart(weeklyData: stats.weeklyXp),
                   ),
 
@@ -96,8 +96,8 @@ class StatsPage extends ConsumerWidget {
                     const SizedBox(height: 12),
                     Card(
                       elevation: 0,
-                      color:
-                          colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      // DÜZELTME 1: withValues kullanıldı
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       child: ListTile(
@@ -159,7 +159,7 @@ class StatsPage extends ConsumerWidget {
 }
 
 // -----------------------------------------------------------------------------
-// 🔹 CHART WIDGET (Clean & Isolated)
+// 🔹 CHART WIDGET
 // -----------------------------------------------------------------------------
 
 class _XpChart extends StatelessWidget {
@@ -171,9 +171,10 @@ class _XpChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    // Max Y değerini bulup %20 padding ekleyelim (Grafik tepesine yapışmasın)
-    final maxY =
-        weeklyData.fold<int>(0, (m, d) => d.xp > m ? d.xp : m).toDouble();
+    final maxY = weeklyData.isEmpty 
+        ? 100.0 
+        : weeklyData.fold<int>(0, (m, d) => d.xp > m ? d.xp : m).toDouble();
+    
     final targetMaxY = maxY == 0 ? 100.0 : maxY * 1.2;
 
     return LineChart(
@@ -181,9 +182,10 @@ class _XpChart extends StatelessWidget {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: targetMaxY / 4, // 4 yatay çizgi
+          horizontalInterval: targetMaxY / 4,
           getDrawingHorizontalLine: (value) => FlLine(
-            color: colorScheme.outlineVariant.withOpacity(0.5),
+            // DÜZELTME 2: withValues kullanıldı
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
             strokeWidth: 1,
             dashArray: [5, 5],
           ),
@@ -194,9 +196,7 @@ class _XpChart extends StatelessWidget {
           topTitles:
               const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           leftTitles: const AxisTitles(
-              sideTitles: SideTitles(
-                  showTitles:
-                      false)), // Y ekseni sayılarını gizledim, temiz görünüm için
+              sideTitles: SideTitles(showTitles: false)),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -204,13 +204,14 @@ class _XpChart extends StatelessWidget {
               interval: 1,
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
-                if (index < 0 || index >= weeklyData.length)
+                if (index < 0 || index >= weeklyData.length) {
                   return const SizedBox();
+                }
                 final date = weeklyData[index].date;
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    DateFormat('E').format(date), // Pzt, Sal... (Day Name)
+                    DateFormat('E').format(date),
                     style: TextStyle(
                       color: colorScheme.onSurfaceVariant,
                       fontSize: 12,
@@ -255,19 +256,17 @@ class _XpChart extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  colorScheme.primary.withOpacity(0.3),
-                  colorScheme.primary.withOpacity(0.0),
+                  // DÜZELTME 3 & 4: withValues kullanıldı
+                  colorScheme.primary.withValues(alpha: 0.3),
+                  colorScheme.primary.withValues(alpha: 0.0),
                 ],
               ),
             ),
           ),
         ],
-        // Tooltip (Dokununca XP gösterir)
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            // ✅ DÜZELTME: Renk ayarı burası, rounded radius satırı SİLİNDİ.
             getTooltipColor: (touchedSpot) => colorScheme.inverseSurface,
-
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 return LineTooltipItem(
@@ -310,10 +309,12 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+        // DÜZELTME 5: withValues kullanıldı
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
+            // DÜZELTME 6: withValues kullanıldı
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

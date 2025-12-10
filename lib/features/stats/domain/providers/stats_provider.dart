@@ -1,31 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fitlife/features/workouts/domain/models/workout_session.dart';
 import 'package:fitlife/features/workouts/domain/providers/workout_session_providers.dart';
-
-// İstatistik verilerini tutacak basit bir model
-class StatsData {
-  final List<DailyXp> weeklyXp;
-  final int totalXp;
-  final int totalSessions;
-  final int currentStreak;
-  final WorkoutSession? lastSession;
-
-  StatsData({
-    required this.weeklyXp,
-    required this.totalXp,
-    required this.totalSessions,
-    required this.currentStreak,
-    this.lastSession,
-  });
-}
-
-class DailyXp {
-  final DateTime date;
-  final int xp;
-  DailyXp(this.date, this.xp);
-}
+import 'package:fitlife/features/stats/domain/models/stats_data.dart'; // Modeli buradan import et
 
 final statsProvider = Provider.autoDispose<AsyncValue<StatsData>>((ref) {
+  // Veritabanındaki tüm sessionları dinle
   final sessionsAsync = ref.watch(workoutSessionsProvider);
 
   return sessionsAsync.whenData((sessions) {
@@ -38,24 +17,23 @@ final statsProvider = Provider.autoDispose<AsyncValue<StatsData>>((ref) {
       );
     }
 
-    // 1. Total XP & Sessions
+    // --- 1. Toplam XP Hesaplama ---
     final totalXp = sessions.fold<int>(0, (sum, s) => sum + s.xpEarned);
     
-    // 2. Last Session (Tarihe göre en yeni)
+    // --- 2. Son Antrenmanı Bulma ---
     final sortedSessions = List<WorkoutSession>.from(sessions)
-      ..sort((a, b) => b.date.compareTo(a.date)); // Yeni -> Eski
+      ..sort((a, b) => b.date.compareTo(a.date)); // Yeniden eskiye
     final lastSession = sortedSessions.first;
 
-    // 3. Weekly Data (Son 7 Gün - Boş günler dahil)
+    // --- 3. Haftalık Veri (Son 7 Gün) ---
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final List<DailyXp> weeklyData = [];
 
-    // Bugünden geriye 6 gün git (Toplam 7 gün)
     for (int i = 6; i >= 0; i--) {
       final day = today.subtract(Duration(days: i));
       
-      // O güne ait sessionları bul ve XP'lerini topla
+      // O günün toplam XP'sini bul
       final xpForDay = sessions
           .where((s) => 
               s.date.year == day.year && 
@@ -66,22 +44,21 @@ final statsProvider = Provider.autoDispose<AsyncValue<StatsData>>((ref) {
       weeklyData.add(DailyXp(day, xpForDay));
     }
 
-    // 4. Streak Calculation (Seri Hesaplama)
+    // --- 4. Streak (Seri) Hesaplama ---
     int streak = 0;
-    // Bugün antrenman yapıldı mı kontrol et, yapılmadıysa dünden başla
-    // (Kullanıcı bugün henüz yapmamış olabilir ama serisi bozulmamıştır)
     DateTime checkDate = today;
     
-    // Tüm unique antrenman günlerini set'e at (Hızlı arama için)
+    // Antrenman yapılan günleri normalize et (saat bilgisini at)
     final activeDays = sessions.map((s) => 
       DateTime(s.date.year, s.date.month, s.date.day)
     ).toSet();
 
-    // Eğer bugün yapılmadıysa, dünden itibaren seriyi kontrol et
+    // Bugün yapılmadıysa, seriyi dünden kontrol etmeye başla
     if (!activeDays.contains(checkDate)) {
       checkDate = checkDate.subtract(const Duration(days: 1));
     }
 
+    // Geriye doğru ardışık günleri say
     while (activeDays.contains(checkDate)) {
       streak++;
       checkDate = checkDate.subtract(const Duration(days: 1));
