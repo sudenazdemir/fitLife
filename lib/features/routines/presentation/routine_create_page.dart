@@ -1,5 +1,4 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +8,9 @@ import 'package:fitlife/features/routines/domain/providers/routine_providers.dar
 import 'package:fitlife/features/workouts/domain/providers/workouts_provider.dart';
 
 class RoutineCreatePage extends ConsumerStatefulWidget {
-  const RoutineCreatePage({super.key});
+  final Routine? routineToEdit; // 👈 Düzenleme için bu parametreyi ekledik
+
+  const RoutineCreatePage({super.key, this.routineToEdit});
 
   @override
   ConsumerState<RoutineCreatePage> createState() => _RoutineCreatePageState();
@@ -17,13 +18,26 @@ class RoutineCreatePage extends ConsumerStatefulWidget {
 
 class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  late TextEditingController _nameController;
 
-  /// 1–7 (Mon–Sun)
   final Set<int> _selectedDays = {};
   final Set<String> _selectedWorkoutIds = {};
 
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Eğer düzenleme modundaysak verileri doldur
+    if (widget.routineToEdit != null) {
+      final r = widget.routineToEdit!;
+      _nameController = TextEditingController(text: r.name);
+      _selectedDays.addAll(r.daysOfWeek);
+      _selectedWorkoutIds.addAll(r.workoutIds);
+    } else {
+      _nameController = TextEditingController();
+    }
+  }
 
   @override
   void dispose() {
@@ -32,24 +46,9 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
   }
 
   String _dayLabel(int day) {
-    switch (day) {
-      case 1:
-        return 'Mon';
-      case 2:
-        return 'Tue';
-      case 3:
-        return 'Wed';
-      case 4:
-        return 'Thu';
-      case 5:
-        return 'Fri';
-      case 6:
-        return 'Sat';
-      case 7:
-        return 'Sun';
-      default:
-        return '$day';
-    }
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    if (day >= 1 && day <= 7) return days[day - 1];
+    return '$day';
   }
 
   Future<void> _onSavePressed() async {
@@ -57,203 +56,141 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
 
     if (_selectedDays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select at least one day of the week.'),
-        ),
+        const SnackBar(content: Text('Please select at least one day.')),
       );
       return;
     }
 
     if (_selectedWorkoutIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select at least one workout.'),
-        ),
+        const SnackBar(content: Text('Please select at least one workout.')),
       );
       return;
     }
 
-    final messenger = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    final repo = ref.read(routineRepositoryProvider);
-
-    final id =
-        '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}';
-
-    final routine = Routine(
-      id: id,
-      name: _nameController.text.trim(),
-      daysOfWeek: _selectedDays.toList()..sort(),
-      workoutIds: _selectedWorkoutIds.toList(),
-      createdAt: DateTime.now(),
-    );
+    setState(() => _isSaving = true);
 
     try {
-      await repo.saveRoutine(routine); // ← DOĞRU METHOD
-      ref.invalidate(routinesFutureProvider); // ← DOĞRU PROVIDER
+      final repo = ref.read(routineRepositoryProvider);
 
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Routine "${routine.name}" created!'),
-        ),
+      // Düzenliyorsak eski ID'yi, yeni ise rastgele ID kullan
+      final id = widget.routineToEdit?.id ??
+          '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}';
+
+      final routine = Routine(
+        id: id,
+        name: _nameController.text.trim(),
+        daysOfWeek: _selectedDays.toList()..sort(),
+        workoutIds: _selectedWorkoutIds.toList(),
+        createdAt: widget.routineToEdit?.createdAt ?? DateTime.now(),
       );
 
-      router.pop();
+      await repo.saveRoutine(routine);
+      ref.invalidate(routinesFutureProvider); // Listeyi yenile
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Routine "${routine.name}" saved!')),
+      );
+      context.pop();
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Failed to save routine: $e'),
-        ),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-
     final workoutsAsync = ref.watch(filteredWorkoutsProvider);
+    final isEditing = widget.routineToEdit != null;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Weekly Routine'),
+        title: Text(isEditing ? 'Edit Routine' : 'New Routine'),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: workoutsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(
-              child: Text('Failed to load workouts: $e'),
-            ),
-            data: (workouts) {
-              if (workouts.isEmpty) {
-                return Center(
-                  child: Text(
-                    'You don’t have any workouts yet.\nCreate a workout first.',
-                    textAlign: TextAlign.center,
-                    style: textTheme.bodyMedium,
-                  ),
-                );
-              }
+        child: workoutsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, s) => Center(child: Text('Error: $e')),
+          data: (workouts) {
+            if (workouts.isEmpty) {
+              return const Center(child: Text('Create a workout first!'));
+            }
 
-              return Column(
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Routine name',
-                    style: textTheme.titleSmall,
-                  ),
+                  // İsim Alanı
+                  Text('Routine Name', style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 8),
                   Form(
                     key: _formKey,
                     child: TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. Push / Pull / Legs',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a routine name.';
-                        }
-                        return null;
-                      },
+                      decoration: const InputDecoration(hintText: 'e.g. Morning Cardio'),
+                      validator: (v) => v!.trim().isEmpty ? 'Required' : null,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Days of the week',
-                    style: textTheme.titleSmall,
-                  ),
+                  const SizedBox(height: 24),
+
+                  // Gün Seçimi
+                  Text('Days', style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
-                    runSpacing: 8,
-                    children: List.generate(7, (index) {
-                      final day = index + 1;
-                      final selected = _selectedDays.contains(day);
-                      return ChoiceChip(
+                    children: List.generate(7, (i) {
+                      final day = i + 1;
+                      final isSelected = _selectedDays.contains(day);
+                      return FilterChip(
                         label: Text(_dayLabel(day)),
-                        selected: selected,
-                        onSelected: (value) {
+                        selected: isSelected,
+                        onSelected: (v) {
                           setState(() {
-                            if (value) {
-                              _selectedDays.add(day);
-                            } else {
-                              _selectedDays.remove(day);
-                            }
+                            v ? _selectedDays.add(day) : _selectedDays.remove(day);
                           });
                         },
                       );
                     }),
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    'Workouts in this routine',
-                    style: textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: workouts.length,
-                      itemBuilder: (context, index) {
-                        final w = workouts[index];
-                        final selected = _selectedWorkoutIds.contains(w.id);
 
-                        return CheckboxListTile(
-                          value: selected,
-                          onChanged: (checked) {
-                            setState(() {
-                              if (checked == true) {
-                                _selectedWorkoutIds.add(w.id);
-                              } else {
-                                _selectedWorkoutIds.remove(w.id);
-                              }
-                            });
-                          },
-                          title: Text(w.title),
-                          subtitle: Text(
-                            '${w.category} • ${w.durationMinutes} min',
-                          ),
-                        );
+                  // Workout Seçimi
+                  Text('Workouts', style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  ...workouts.map((w) {
+                    final isChecked = _selectedWorkoutIds.contains(w.id);
+                    return CheckboxListTile(
+                      title: Text(w.title),
+                      subtitle: Text(w.category),
+                      value: isChecked,
+                      onChanged: (v) {
+                        setState(() {
+                          v == true
+                              ? _selectedWorkoutIds.add(w.id)
+                              : _selectedWorkoutIds.remove(w.id);
+                        });
                       },
-                    ),
-                  ),
-                  SafeArea(
-                    top: false,
-                    minimum: const EdgeInsets.only(top: 8, bottom: 8),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _isSaving ? null : _onSavePressed,
-                        child: _isSaving
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Save Routine'),
-                      ),
+                    );
+                  }),
+                  
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _isSaving ? null : _onSavePressed,
+                      child: Text(isEditing ? 'Update Routine' : 'Create Routine'),
                     ),
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

@@ -26,7 +26,6 @@ import 'package:fitlife/features/routines/domain/models/routine.dart';
 import 'package:fitlife/features/routines/presentation/routine_runner_page.dart';
 import 'package:fitlife/features/measurements/presentation/measurements_page.dart';
 
-
 final _rootKey = GlobalKey<NavigatorState>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -141,9 +140,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
-            path: Routes.routineCreate,
-            name: RouteNames.routineCreate,
-            builder: (context, state) => const RoutineCreatePage(),
+            path: Routes.routineCreate, // '/create-routine' gibi bir şeydir
+            builder: (context, state) {
+              // State.extra'dan rutini alıp sayfaya veriyoruz
+              final routineToEdit = state.extra as Routine?;
+              return RoutineCreatePage(routineToEdit: routineToEdit);
+            },
           ),
           GoRoute(
             path: Routes.routines,
@@ -164,9 +166,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
-    path: Routes.measurements,
-    builder: (context, state) => const MeasurementsPage(),
-  ),
+            path: Routes.measurements,
+            builder: (context, state) => const MeasurementsPage(),
+          ),
         ],
       ),
     ],
