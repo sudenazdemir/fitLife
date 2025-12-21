@@ -11,6 +11,7 @@ import 'package:fitlife/features/workouts/domain/repositories/workout_session_re
 import 'package:fitlife/features/workouts/domain/providers/xp_engine_provider.dart';
 import 'package:fitlife/features/routines/domain/models/routine.dart';
 import 'package:fitlife/features/exercise_library/domain/models/exercise.dart';
+import 'package:fitlife/features/auth/domain/user_provider.dart';
 
 // --- DATA MODELS ---
 enum ExerciseType { weighted, duration }
@@ -169,12 +170,12 @@ class _RoutineRunnerPageState extends ConsumerState<RoutineRunnerPage> {
     _globalStopwatch.stop();
     final router = GoRouter.of(context);
     final totalMinutes = _globalStopwatch.elapsed.inMinutes;
+  // 1. XP Hesapla
     final xp = ref.read(xpEngineProvider).calculateXp(
-          durationMinutes: totalMinutes == 0 ? 1 : totalMinutes,
-          difficulty: 'Routine',
-          sets: _totalSetsCompleted,
-          reps: null,
-        );
+      durationMinutes: totalMinutes == 0 ? 1 : totalMinutes, // En az 1 dk say
+      difficulty: 'Routine',
+      sets: _totalSetsCompleted,
+    );
 
     final session = WorkoutSession(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -188,6 +189,8 @@ class _RoutineRunnerPageState extends ConsumerState<RoutineRunnerPage> {
     );
 
     await WorkoutSessionRepository().addSession(session);
+    // 👇 3. YENİ KISIM: KULLANICIYA XP YÜKLE
+    await ref.read(userProvider.notifier).addXp(xp);
     if (mounted) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Awesome! Earned $xp XP')));

@@ -20,19 +20,25 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       name: fields[0] as String,
       avatar: fields[1] as String?,
       goal: fields[2] as String?,
+      totalXp: fields[3] as int,
+      level: fields[4] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserProfile obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
       ..write(obj.avatar)
       ..writeByte(2)
-      ..write(obj.goal);
+      ..write(obj.goal)
+      ..writeByte(3)
+      ..write(obj.totalXp)
+      ..writeByte(4)
+      ..write(obj.level);
   }
 
   @override
