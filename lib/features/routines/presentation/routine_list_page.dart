@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:fitlife/core/constants.dart';
+import 'package:fitlife/core/services/notification_service.dart';
 import 'package:fitlife/features/routines/domain/models/routine.dart';
 import 'package:fitlife/features/routines/domain/providers/routine_providers.dart';
 
@@ -11,7 +12,8 @@ class RoutineListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final routinesAsync = ref.watch(routinesFutureProvider);
+    // GÜNCELLEME: StreamProvider dinleniyor
+    final routinesAsync = ref.watch(routinesListProvider); 
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -20,7 +22,6 @@ class RoutineListPage extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Yeni oluştururken extra göndermiyoruz (null)
           context.push(Routes.routineCreate);
         },
         child: const Icon(Icons.add),
@@ -77,10 +78,20 @@ class _RoutineCard extends ConsumerWidget {
       color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
+        onTap: () {
+          // Detay sayfasına yönlendir
+          context.push(Routes.routineDetail, extra: routine);
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Text(
-          routine.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            Expanded(
+                child: Text(routine.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold))),
+            if (routine.isReminderEnabled)
+              Icon(Icons.notifications_active,
+                  size: 16, color: colorScheme.primary.withValues(alpha: 0.7)),
+          ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,19 +102,20 @@ class _RoutineCard extends ConsumerWidget {
               style: TextStyle(color: colorScheme.primary),
             ),
             const SizedBox(height: 2),
-            Text('${routine.workoutIds.length} Workouts assigned'),
+            // GÜNCELLEME: WorkoutIds -> ExerciseIds ve metin değişimi
+            Text('${routine.exerciseIds.length} Exercises assigned'),
           ],
         ),
         trailing: PopupMenuButton(
           icon: const Icon(Icons.more_vert),
           onSelected: (value) async {
             if (value == 'edit') {
-              // 🚀 DÜZENLEME: Rutin nesnesini 'extra' olarak gönderiyoruz
               context.push(Routes.routineCreate, extra: routine);
             } else if (value == 'delete') {
-              // SİLME
+              await NotificationService().cancelRoutineNotifications(routine);
+              // Provider değiştiği için fonksiyonu buradan çağırıyoruz
               await ref.read(routineRepositoryProvider).deleteRoutine(routine.id);
-              ref.invalidate(routinesFutureProvider);
+              // Stream olduğu için invalidate etmeye gerek yok, otomatik güncellenir!
             }
           },
           itemBuilder: (context) => [

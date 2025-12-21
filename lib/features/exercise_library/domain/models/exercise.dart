@@ -24,6 +24,10 @@ class Exercise extends HiveObject {
   @HiveField(5)
   final String description;
 
+  // YENİ ALAN:
+  @HiveField(6)
+  final String? gifUrl;
+
   Exercise({
     required this.id,
     required this.name,
@@ -31,6 +35,7 @@ class Exercise extends HiveObject {
     required this.equipment,
     required this.difficulty,
     required this.description,
+    this.gifUrl,
   });
 
   // JSON işlemleri için factory ve metodlar

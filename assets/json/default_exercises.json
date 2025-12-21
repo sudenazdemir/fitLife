@@ -1,0 +1,82 @@
+[
+  {
+    "id": "def_1",
+    "name": "Push Up",
+    "muscleGroup": "Chest",
+    "equipment": "Bodyweight",
+    "difficulty": "Beginner",
+    "description": "A classic bodyweight exercise targeting the chest, shoulders, and triceps."
+  },
+  {
+    "id": "def_2",
+    "name": "Bodyweight Squat",
+    "muscleGroup": "Legs",
+    "equipment": "Bodyweight",
+    "difficulty": "Beginner",
+    "description": "Fundamental lower body movement for quads, hamstrings, and glutes."
+  },
+  {
+    "id": "def_3",
+    "name": "Plank",
+    "muscleGroup": "Core",
+    "equipment": "Bodyweight",
+    "difficulty": "Beginner",
+    "description": "Isometric core strength exercise that builds stability."
+  },
+  {
+    "id": "def_4",
+    "name": "Lunge",
+    "muscleGroup": "Legs",
+    "equipment": "Bodyweight",
+    "difficulty": "Beginner",
+    "description": "Unilateral leg exercise for balance and strength."
+  },
+  {
+    "id": "def_5",
+    "name": "Burpees",
+    "muscleGroup": "Full Body",
+    "equipment": "Bodyweight",
+    "difficulty": "Intermediate",
+    "description": "High-intensity full body exercise for conditioning."
+  },
+  {
+    "id": "def_6",
+    "name": "Dumbbell Curl",
+    "muscleGroup": "Arms",
+    "equipment": "Dumbbell",
+    "difficulty": "Beginner",
+    "description": "Isolation exercise for biceps brachii."
+  },
+  {
+    "id": "def_7",
+    "name": "Dumbbell Shoulder Press",
+    "muscleGroup": "Shoulders",
+    "equipment": "Dumbbell",
+    "difficulty": "Intermediate",
+    "description": "Overhead press for shoulder mass and strength."
+  },
+  {
+    "id": "def_8",
+    "name": "Deadlift",
+    "muscleGroup": "Back",
+    "equipment": "Barbell",
+    "difficulty": "Advanced",
+    "description": "Compound lift targeting the posterior chain."
+  },
+  {
+    "id": "def_9",
+    "name": "Bench Press",
+    "muscleGroup": "Chest",
+    "equipment": "Barbell",
+    "difficulty": "Intermediate",
+    "description": "Primary compound exercise for upper body pushing strength."
+  },
+  {
+    "id": "def_10",
+    "name": "Pull Up",
+    "muscleGroup": "Back",
+    "equipment": "Bodyweight",
+    "difficulty": "Intermediate",
+    "description": "Upper body pulling exercise for back width."
+  }
+]

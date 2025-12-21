@@ -23,13 +23,14 @@ class ExerciseAdapter extends TypeAdapter<Exercise> {
       equipment: fields[3] as String,
       difficulty: fields[4] as String,
       description: fields[5] as String,
+      gifUrl: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Exercise obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class ExerciseAdapter extends TypeAdapter<Exercise> {
       ..writeByte(4)
       ..write(obj.difficulty)
       ..writeByte(5)
-      ..write(obj.description);
+      ..write(obj.description)
+      ..writeByte(6)
+      ..write(obj.gifUrl);
   }
 
   @override
@@ -66,6 +69,7 @@ Exercise _$ExerciseFromJson(Map<String, dynamic> json) => Exercise(
       equipment: json['equipment'] as String,
       difficulty: json['difficulty'] as String,
       description: json['description'] as String,
+      gifUrl: json['gifUrl'] as String?,
     );
 
 Map<String, dynamic> _$ExerciseToJson(Exercise instance) => <String, dynamic>{
@@ -75,4 +79,5 @@ Map<String, dynamic> _$ExerciseToJson(Exercise instance) => <String, dynamic>{
       'equipment': instance.equipment,
       'difficulty': instance.difficulty,
       'description': instance.description,
+      'gifUrl': instance.gifUrl,
     };

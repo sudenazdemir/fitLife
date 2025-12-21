@@ -22,6 +22,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+
+        // 👇 EŞİTTİR İŞARETİ VE 'is' ÖNEKİ ÖNEMLİ
+    isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
@@ -47,4 +50,7 @@ dependencies {
 
     // 🔥 Auth (gerekli)
     implementation("com.google.firebase:firebase-auth")
+
+   // 👇 PARANTEZ VE ÇİFT TIRNAK ÖNEMLİ
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

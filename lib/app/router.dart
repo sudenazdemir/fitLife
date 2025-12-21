@@ -25,6 +25,8 @@ import 'package:fitlife/features/routines/presentation/routine_detail_page.dart'
 import 'package:fitlife/features/routines/domain/models/routine.dart';
 import 'package:fitlife/features/routines/presentation/routine_runner_page.dart';
 import 'package:fitlife/features/measurements/presentation/measurements_page.dart';
+import 'package:fitlife/features/exercise_library/presentation/exercise_detail_screen.dart';
+import 'package:fitlife/features/exercise_library/domain/models/exercise.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
@@ -113,7 +115,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: Routes.exerciseLibrary,
             name: RouteNames.exerciseLibrary,
-            builder: (context, state) => const ExerciseLibraryPage(),
+            builder: (context, state) => const ExerciseLibraryScreen(),
           ),
           GoRoute(
             path: Routes.routineRunner,
@@ -168,6 +170,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: Routes.measurements,
             builder: (context, state) => const MeasurementsPage(),
+          ),
+          GoRoute(
+            path: Routes.exerciseDetail,
+            builder: (context, state) {
+              // Listeden gönderdiğimiz 'exercise' objesini burada yakalıyoruz
+              final exercise = state.extra as Exercise;
+              return ExerciseDetailScreen(exercise: exercise);
+            },
           ),
         ],
       ),

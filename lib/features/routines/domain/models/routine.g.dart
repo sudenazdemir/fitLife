@@ -20,15 +20,18 @@ class RoutineAdapter extends TypeAdapter<Routine> {
       id: fields[0] as String,
       name: fields[1] as String,
       daysOfWeek: (fields[2] as List).cast<int>(),
-      workoutIds: (fields[3] as List).cast<String>(),
+      exerciseIds: (fields[3] as List).cast<String>(),
       createdAt: fields[4] as DateTime,
+      reminderHour: fields[5] as int?,
+      reminderMinute: fields[6] as int?,
+      isReminderEnabled: fields[7] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Routine obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -36,9 +39,15 @@ class RoutineAdapter extends TypeAdapter<Routine> {
       ..writeByte(2)
       ..write(obj.daysOfWeek)
       ..writeByte(3)
-      ..write(obj.workoutIds)
+      ..write(obj.exerciseIds)
       ..writeByte(4)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(5)
+      ..write(obj.reminderHour)
+      ..writeByte(6)
+      ..write(obj.reminderMinute)
+      ..writeByte(7)
+      ..write(obj.isReminderEnabled);
   }
 
   @override
