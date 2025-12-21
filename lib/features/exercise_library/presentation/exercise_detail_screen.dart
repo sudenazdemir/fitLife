@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fitlife/features/exercise_library/domain/models/exercise.dart';
-import 'package:fitlife/features/routines/domain/models/routine.dart';
 import 'package:fitlife/features/routines/domain/providers/routine_providers.dart';
 
 class ExerciseDetailScreen extends ConsumerWidget {
