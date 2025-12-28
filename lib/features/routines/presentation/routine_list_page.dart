@@ -7,18 +7,46 @@ import 'package:fitlife/core/services/notification_service.dart';
 import 'package:fitlife/features/routines/domain/models/routine.dart';
 import 'package:fitlife/features/routines/domain/providers/routine_providers.dart';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:fitlife/core/constants.dart';
+import 'package:fitlife/core/services/notification_service.dart';
+import 'package:fitlife/features/routines/domain/models/routine.dart';
+import 'package:fitlife/features/routines/domain/providers/routine_providers.dart';
+
+// 👇 1. BURAYI EKLE (Dosya yolunun doğru olduğundan emin ol)
+import 'package:fitlife/features/workouts/presentation/smart_log_screen.dart';
+
 class RoutineListPage extends ConsumerWidget {
   const RoutineListPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // GÜNCELLEME: StreamProvider dinleniyor
-    final routinesAsync = ref.watch(routinesListProvider); 
+    final routinesAsync = ref.watch(routinesListProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Routines'),
+        // 👇 2. BURAYI EKLE: Sağ üst köşeye AI butonu
+        actions: [
+          IconButton(
+            onPressed: () {
+              // Butona basınca SmartLogScreen açılır
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SmartLogScreen()),
+              );
+            },
+            icon: const Icon(Icons.auto_awesome,
+                color: Colors.deepPurple), // ✨ İkonu
+            tooltip: 'AI Quick Log',
+          ),
+          const SizedBox(width: 8), // Sağa yapışmasın diye minik boşluk
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -114,7 +142,9 @@ class _RoutineCard extends ConsumerWidget {
             } else if (value == 'delete') {
               await NotificationService().cancelRoutineNotifications(routine);
               // Provider değiştiği için fonksiyonu buradan çağırıyoruz
-              await ref.read(routineRepositoryProvider).deleteRoutine(routine.id);
+              await ref
+                  .read(routineRepositoryProvider)
+                  .deleteRoutine(routine.id);
               // Stream olduğu için invalidate etmeye gerek yok, otomatik güncellenir!
             }
           },
@@ -122,13 +152,21 @@ class _RoutineCard extends ConsumerWidget {
             const PopupMenuItem(
               value: 'edit',
               child: Row(
-                children: [Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('Edit')],
+                children: [
+                  Icon(Icons.edit, size: 20),
+                  SizedBox(width: 8),
+                  Text('Edit')
+                ],
               ),
             ),
             const PopupMenuItem(
               value: 'delete',
               child: Row(
-                children: [Icon(Icons.delete, size: 20, color: Colors.red), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.red))],
+                children: [
+                  Icon(Icons.delete, size: 20, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Delete', style: TextStyle(color: Colors.red))
+                ],
               ),
             ),
           ],

@@ -1,29 +1,24 @@
 import 'package:dio/dio.dart';
 import 'package:hive/hive.dart';
 import 'package:fitlife/features/exercise_library/domain/models/exercise.dart';
-import 'package:flutter/foundation.dart'; // 👈 debugPrint için gerekli
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class DataSeeder {
   static Future<void> seedFromApi() async {
     final exerciseBox = Hive.box<Exercise>('exercises');
 
-    // Eğer veri varsa tekrar çekme (API limitini harcamamak için önemli!)
-    if (exerciseBox.isNotEmpty) {
-      debugPrint("DataSeeder: Veriler zaten var, API isteği atılmadı.");
-      return;
-    }
+    // 🚨 Temizlik Kodu (Hala aktif kalsın ki kediler gitsin)
+    await exerciseBox.clear();
+    debugPrint("DataSeeder: Kutu temizlendi.");
 
     try {
       debugPrint("DataSeeder: API'den veriler çekiliyor...");
 
       final dio = Dio();
-
-      // ExerciseDB Endpoint'i
-      // limit=10 diyerek sadece 10 tane çekiyoruz test için.
       final response = await dio.get(
         'https://exercisedb.p.rapidapi.com/exercises',
-        queryParameters: {'limit': '10', 'offset': '0'},
+        queryParameters: {'limit': '15', 'offset': '0'}, // Sayıyı biraz arttırdım
         options: Options(
           headers: {
             'X-RapidAPI-Key': dotenv.env['RAPID_API_KEY'] ?? '',
@@ -35,36 +30,46 @@ class DataSeeder {
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
 
+        // 🔥 KAS GRUBU RESİM HARİTASI (MANUEL & GÜVENLİ)
+        // Her kas grubu için Unsplash'ten özel seçilmiş havalı fotolar.
+        final Map<String, String> muscleImages = {
+          'back': 'https://images.unsplash.com/photo-1603287681836-e174ce5b610d?q=80&w=600&auto=format&fit=crop', // Barfiks
+          'cardio': 'https://images.unsplash.com/photo-1538805060512-e2828134b340?q=80&w=600&auto=format&fit=crop', // Koşu
+          'chest': 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=600&auto=format&fit=crop', // Bench Press
+          'lower arms': 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=600&auto=format&fit=crop', // Dumbbell
+          'lower legs': 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=600&auto=format&fit=crop', // Bacak/Squat
+          'neck': 'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?q=80&w=600&auto=format&fit=crop', // Esneme
+          'shoulders': 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=600&auto=format&fit=crop', // Omuz Press
+          'upper arms': 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=600&auto=format&fit=crop', // Biceps
+          'upper legs': 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?q=80&w=600&auto=format&fit=crop', // Squat Rack
+          'waist': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=600&auto=format&fit=crop', // Karın/Abs
+        };
+
+        // Varsayılan resim (Eğer listede yoksa bu çıkar)
+        const String defaultImage = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop';
+
         final List<Exercise> exercises = data.map((json) {
-          // 👇 DÜZELTME BURADA: ID'yi alıp linki biz yapıyoruz
-          final String exerciseId = json['id'] ?? '0001';
-          final String muscle = json['bodyPart'] ?? 'fitness';
-          // ExerciseDB'nin genel GIF sunucusu:
-          // 👇 YENİ (ÇALIŞAN - GitHub Raw):
-          // 👇 YENİ (GARANTİ ÇALIŞAN - Dinamik Resim Servisi):
-          // Boşlukları virgülle değiştiriyoruz ki url bozulmasın (örn: "upper legs" -> "upper,legs")
-          final String encodedMuscle = muscle.replaceAll(' ', ',');
-          final String manualGifUrl =
-              'https://loremflickr.com/400/400/gym,fitness,$encodedMuscle/all';
+          final String bodyPart = json['bodyPart'] ?? 'unknown';
+          
+          // Map'ten uygun resmi bul, yoksa varsayılanı kullan
+          final String safeImageUrl = muscleImages[bodyPart] ?? defaultImage;
+
           return Exercise(
-            id: exerciseId,
+            id: json['id'] ?? '0000',
             name: json['name'] ?? 'No Name',
-            muscleGroup: json['bodyPart'] ?? 'General',
+            muscleGroup: bodyPart,
             equipment: json['equipment'] ?? 'Bodyweight',
             difficulty: 'Intermediate',
-            // Instructions bir liste olarak geliyor, onu birleştirip String yapalım:
             description: json['instructions'] != null
                 ? (json['instructions'] as List).join("\n")
                 : "No description.",
-
-            // Eğer API gifUrl vermediyse (ki vermiyor), biz oluşturduğumuzu kullanalım:
-            gifUrl: json['gifUrl'] ?? manualGifUrl,
+            gifUrl: safeImageUrl, // ARTIK KEDİ YOK! 🦁
           );
         }).toList();
 
         await exerciseBox.addAll(exercises);
-        debugPrint(
-            "DataSeeder: API'den çekilen ${exercises.length} egzersiz kaydedildi.");
+        debugPrint("DataSeeder: ${exercises.length} egzersiz yüklendi. (Kedisiz Versiyon)");
+
       } else {
         debugPrint("DataSeeder API Hatası: ${response.statusCode}");
       }
