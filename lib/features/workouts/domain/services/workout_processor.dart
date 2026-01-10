@@ -37,8 +37,8 @@ class WorkoutProcessor {
       int totalReps = 0;
 
       for (var ex in parsed.exercises) {
-        int s = ex.sets ?? 3;  // Varsayılan 3 set
-        int r = ex.reps ?? 10; // Varsayılan 10 tekrar
+        final int  s = ex.sets ?? 3;  // Varsayılan 3 set
+        final int r = ex.reps ?? 10; // Varsayılan 10 tekrar
         
         totalSets += s;
         totalReps += r;

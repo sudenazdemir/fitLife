@@ -22,13 +22,14 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       goal: fields[2] as String?,
       totalXp: fields[3] as int,
       level: fields[4] as int,
+      gender: fields[5] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserProfile obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -38,7 +39,9 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       ..writeByte(3)
       ..write(obj.totalXp)
       ..writeByte(4)
-      ..write(obj.level);
+      ..write(obj.level)
+      ..writeByte(5)
+      ..write(obj.gender);
   }
 
   @override

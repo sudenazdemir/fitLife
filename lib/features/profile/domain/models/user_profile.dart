@@ -20,12 +20,16 @@ class UserProfile extends HiveObject {
   @HiveField(4)
   final int level;
 
+  @HiveField(5)
+  final String? gender;
+
   UserProfile({
     required this.name,
     this.avatar,
     this.goal,
     this.totalXp = 0, // Varsayılan 0
     this.level = 1,   // Varsayılan Level 1
+    this.gender,
   });
 
   UserProfile copyWith({
@@ -34,6 +38,7 @@ class UserProfile extends HiveObject {
     String? goal,
     int? totalXp,
     int? level,
+    String? gender,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -41,6 +46,7 @@ class UserProfile extends HiveObject {
       goal: goal ?? this.goal,
       totalXp: totalXp ?? this.totalXp,
       level: level ?? this.level,
+      gender: gender ?? this.gender,
     );
   }
 }

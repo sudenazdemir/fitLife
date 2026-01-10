@@ -13,17 +13,17 @@ class StatsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(statsProvider);
     final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: statsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, st) => Center(child: Text('Error: $e')),
           data: (stats) {
             if (stats.totalSessions == 0) {
-              return _buildEmptyState(textTheme, colorScheme);
+              return _buildEmptyState(theme.textTheme, colorScheme);
             }
 
             return SingleChildScrollView(
@@ -31,105 +31,420 @@ class StatsPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Your Progress',
-                    style: textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Consistency is key! Keep up the streak.',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  // 1. HEADER: LEVEL & XP
+                  _buildProfileHeader(context, stats),
 
-                  // 📊 KPI ROW (Total XP & Streak)
+                  const SizedBox(height: 16),
+
+                  // 2. HABIT TRACKER CHART
+                  _buildChartSection(context, stats.weeklyXp),
+
+                  const SizedBox(height: 16),
+
+                  // 3. SKILL TRACKER & GOALS
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Sol: Skill Tracker
                       Expanded(
-                        child: _StatCard(
-                          title: 'Total XP',
-                          value: '${stats.totalXp}',
-                          icon: Icons.electric_bolt,
-                          color: Colors.amber,
-                        ),
+                        flex: 3,
+                        child: _buildSkillTracker(context, stats),
                       ),
                       const SizedBox(width: 12),
+                      // Sağ: Goal Completion
                       Expanded(
-                        child: _StatCard(
-                          title: 'Current Streak',
-                          value: '${stats.currentStreak} Days',
-                          icon: Icons.local_fire_department,
-                          color: Colors.deepOrange,
-                        ),
+                        flex: 2,
+                        child: _buildCircularGoal(context, stats),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
-                  // 📈 CHART CARD
-                  Text(
-                    'Last 7 Days (XP)',
-                    style: textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 250,
-                    child: _XpChart(weeklyData: stats.weeklyXp),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // 📋 LAST SESSION CARD
-                  if (stats.lastSession != null) ...[
-                    Text(
-                      'Last Activity',
-                      style: textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    Card(
-                      elevation: 0,
-                      // DÜZELTME 1: withValues kullanıldı
-                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: colorScheme.primaryContainer,
-                          child: Icon(Icons.fitness_center,
-                              color: colorScheme.primary),
-                        ),
-                        title: Text(
-                          stats.lastSession!.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          DateFormat('MMM d, y • H:mm')
-                              .format(stats.lastSession!.date),
-                        ),
-                        trailing: Text(
-                          '+${stats.lastSession!.xpEarned} XP',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  // 4. LAST ACTIVITY (Düzeltildi)
+                  if (stats.lastSession != null)
+                    _buildLastActivity(context, stats), // Düzeltme: stats nesnesini gönderiyoruz
                 ],
               ),
             );
           },
         ),
       ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 1. PROFILE HEADER
+  // ---------------------------------------------------------------------------
+  Widget _buildProfileHeader(BuildContext context, StatsData stats) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    final int level = (stats.totalXp / 1000).floor() + 1;
+    final int currentLevelXp = stats.totalXp % 1000;
+    final double progress = currentLevelXp / 1000;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: colorScheme.primary,
+                child: Icon(Icons.person, color: colorScheme.onPrimary, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Fitness Hunter",
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    "Level $level",
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    "${stats.totalXp} XP",
+                    style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold, color: colorScheme.primary),
+                  ),
+                  Text(
+                    "Total Earned",
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("Progress", style: theme.textTheme.labelSmall),
+                  Text("$currentLevelXp / 1000 XP", style: theme.textTheme.labelSmall),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor: colorScheme.surfaceDim,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2. CHART SECTION
+  // ---------------------------------------------------------------------------
+  Widget _buildChartSection(BuildContext context, List<DailyXp> weeklyData) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final maxY = weeklyData.isEmpty
+        ? 100.0
+        : weeklyData.map((e) => e.xp).reduce((a, b) => a > b ? a : b).toDouble();
+    final targetMaxY = maxY == 0 ? 100.0 : maxY * 1.2;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      height: 250,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Activity (Last 7 Days)",
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              Icon(Icons.bar_chart, color: colorScheme.primary),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: targetMaxY,
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (group) => colorScheme.inverseSurface,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      return BarTooltipItem(
+                        '${rod.toY.toInt()} XP',
+                        TextStyle(
+                          color: colorScheme.onInverseSurface,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= weeklyData.length) return const SizedBox();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            DateFormat('E').format(weeklyData[index].date)[0],
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barGroups: weeklyData.asMap().entries.map((entry) {
+                  return BarChartGroupData(
+                    x: entry.key,
+                    barRods: [
+                      BarChartRodData(
+                        toY: entry.value.xp.toDouble(),
+                        color: colorScheme.primary,
+                        width: 16,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        backDrawRodData: BackgroundBarChartRodData(
+                          show: true,
+                          toY: targetMaxY,
+                          color: colorScheme.surfaceDim.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. SKILL TRACKER
+  // ---------------------------------------------------------------------------
+  Widget _buildSkillTracker(BuildContext context, StatsData stats) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Stats Tracker", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          _buildSkillRow(
+            context,
+            label: "Streak",
+            valueText: "${stats.currentStreak} Days",
+            progress: (stats.currentStreak / 30).clamp(0.0, 1.0),
+            icon: Icons.local_fire_department,
+            color: Colors.orange,
+          ),
+          const SizedBox(height: 12),
+          _buildSkillRow(
+            context,
+            label: "Sessions",
+            valueText: "${stats.totalSessions}",
+            progress: (stats.totalSessions / 100).clamp(0.0, 1.0),
+            icon: Icons.fitness_center,
+            color: Colors.blue,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkillRow(
+    BuildContext context, {
+    required String label,
+    required String valueText,
+    required double progress,
+    required IconData icon,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 8),
+            Text(label, style: theme.textTheme.bodySmall),
+            const Spacer(),
+            Text(valueText, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            backgroundColor: theme.colorScheme.surfaceDim,
+            color: color,
+            minHeight: 6,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. CIRCULAR GOAL
+  // ---------------------------------------------------------------------------
+  Widget _buildCircularGoal(BuildContext context, StatsData stats) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      height: 155,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Text("Daily Goal", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          const Spacer(),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 70,
+                height: 70,
+                child: CircularProgressIndicator(
+                  value: 0.75,
+                  strokeWidth: 8,
+                  backgroundColor: colorScheme.surfaceDim,
+                  color: colorScheme.primary,
+                  strokeCap: StrokeCap.round,
+                ),
+              ),
+              const Text("75%", style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 5. LAST ACTIVITY (DÜZELTİLDİ)
+  // ---------------------------------------------------------------------------
+  // Bu fonksiyon artık SessionData yerine StatsData alıyor, böylece tip hatası olmaz.
+  Widget _buildLastActivity(BuildContext context, StatsData stats) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    // stats.lastSession'ın null olmadığı yerde çağrıldığını biliyoruz
+    final session = stats.lastSession!; 
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Last Activity",
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.history, color: colorScheme.onPrimaryContainer),
+            ),
+            title: Text(
+              session.name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              DateFormat('MMM d, y • H:mm').format(session.date),
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
+              ),
+              child: Text(
+                '+${session.xpEarned} XP',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -142,201 +457,13 @@ class StatsPage extends ConsumerWidget {
           const SizedBox(height: 16),
           Text(
             'No Data Yet',
-            style:
-                textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Complete your first workout to\nunlock insights!',
             textAlign: TextAlign.center,
-            style: textTheme.bodyMedium
-                ?.copyWith(color: colorScheme.onSurfaceVariant),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// 🔹 CHART WIDGET
-// -----------------------------------------------------------------------------
-
-class _XpChart extends StatelessWidget {
-  final List<DailyXp> weeklyData;
-
-  const _XpChart({required this.weeklyData});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final maxY = weeklyData.isEmpty 
-        ? 100.0 
-        : weeklyData.fold<int>(0, (m, d) => d.xp > m ? d.xp : m).toDouble();
-    
-    final targetMaxY = maxY == 0 ? 100.0 : maxY * 1.2;
-
-    return LineChart(
-      LineChartData(
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: targetMaxY / 4,
-          getDrawingHorizontalLine: (value) => FlLine(
-            // DÜZELTME 2: withValues kullanıldı
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-            strokeWidth: 1,
-            dashArray: [5, 5],
-          ),
-        ),
-        titlesData: FlTitlesData(
-          rightTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 30,
-              interval: 1,
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index < 0 || index >= weeklyData.length) {
-                  return const SizedBox();
-                }
-                final date = weeklyData[index].date;
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    DateFormat('E').format(date),
-                    style: TextStyle(
-                      color: colorScheme.onSurfaceVariant,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        borderData: FlBorderData(show: false),
-        minX: 0,
-        maxX: 6,
-        minY: 0,
-        maxY: targetMaxY,
-        lineBarsData: [
-          LineChartBarData(
-            spots: weeklyData
-                .asMap()
-                .entries
-                .map((e) => FlSpot(e.key.toDouble(), e.value.xp.toDouble()))
-                .toList(),
-            isCurved: true,
-            color: colorScheme.primary,
-            barWidth: 4,
-            isStrokeCapRound: true,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (spot, percent, barData, index) {
-                return FlDotCirclePainter(
-                  radius: 4,
-                  color: colorScheme.surface,
-                  strokeWidth: 2,
-                  strokeColor: colorScheme.primary,
-                );
-              },
-            ),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  // DÜZELTME 3 & 4: withValues kullanıldı
-                  colorScheme.primary.withValues(alpha: 0.3),
-                  colorScheme.primary.withValues(alpha: 0.0),
-                ],
-              ),
-            ),
-          ),
-        ],
-        lineTouchData: LineTouchData(
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (touchedSpot) => colorScheme.inverseSurface,
-            getTooltipItems: (touchedSpots) {
-              return touchedSpots.map((spot) {
-                return LineTooltipItem(
-                  '${spot.y.toInt()} XP',
-                  TextStyle(
-                    color: colorScheme.onInverseSurface,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              }).toList();
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// 🔹 KPI CARD WIDGET
-// -----------------------------------------------------------------------------
-
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color? color;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        // DÜZELTME 5: withValues kullanıldı
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            // DÜZELTME 6: withValues kullanıldı
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 20, color: color ?? theme.colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
           ),
         ],
       ),
