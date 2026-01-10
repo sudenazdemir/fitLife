@@ -41,7 +41,7 @@ flutter:
     - assets/icons/
     - assets/images/
     - assets/json/default_exercises.json
-    - .env
+    - .env.example
 
 flutter_launcher_icons:
   adaptive_icon_background: "#F2C24F"
