@@ -1,87 +1,65 @@
 # FitLife — Gamified Fitness Tracker
 
-FitLife is a gamified mobile fitness application built with Flutter.  
-Users level up, earn XP, track progress, build routines, and follow structured workout flows.
+FitLife is a gamified mobile fitness application built with Flutter.
+Users level up, earn XP, track progress, build routines, and receive AI-powered feedback.
 
 ---
 
-# 🚀 Milestone M2 — Completed
+# 🚀 Milestone M3 — Completed
 
-This milestone adds full XP Engine integration, Workout Session Logger, Routine Runner MVP, Exercise Library, and Firebase Authentication.
+This milestone introduces advanced statistics, body measurements, AI integration, and a fully populated exercise library.
 
 ---
 
-## ✅ M2 Features (Completed)
+## ✨ New Features (M3 Completed)
+
+### 🤖 AI-Powered Feedback (Google Gemini)
+- Integrated **Google Gemini API** for post-workout analysis.
+- Provides smart feedback based on session performance.
+- AI-driven suggestions for improvement.
+
+### 📈 Advanced Statistics & Charts (v2)
+- **Interactive Graphs:** Visualized daily XP and workout frequency using `fl_chart`.
+- **Real Data Integration:** Stats are now derived directly from Hive database.
+- **Streak System:** Tracks consecutive workout days.
+
+### 📏 Body Measurements Tracking
+- Track weight, body fat percentage, and body circumferences.
+- Local persistence for measurement history.
+- Visual progress tracking.
+
+### 🏋️‍♂️ Pre-Populated Library
+- App comes with a default set of exercises (Populated Local Library).
+- No empty states; users can start working out immediately.
+
+---
+
+## ✅ Core Features (M1 & M2)
 
 ### 🔥 Workout XP Engine
-- Dynamic XP calculation:
-  - Duration-based XP  
-  - Difficulty modifiers (Easy / Medium / Hard)  
-  - Set & Rep bonus system  
-- Unit tests for XP logic  
-- Consistent, deterministic results  
+- Dynamic XP calculation based on duration and difficulty.
+- **Gamification:** Level up system and rigorous unit tests for XP logic.
+
+### 🔁 Routine Runner & Logger
+- **Smart Logger:** Logs duration, sets, and reps with async-safe saving.
+- **Routine Flow:** Auto-timer, rest periods, and set navigation.
+- Redirects seamlessly upon session completion.
+
+### 🔐 Auth & Profile
+- **Firebase Authentication:** Email/Password login and registration.
+- **Local Profile (Hive):** Stores user name, avatar, and goals locally for offline access.
+- **Onboarding:** Smooth user introduction flow.
 
 ---
 
-### 📊 Real Stats Page (XP from Hive)
-- XP is now read from real saved sessions  
-- Daily XP grouped and shown as line chart  
-- Total XP  
-- Total sessions  
-- Last session details  
+# 📅 Roadmap
 
----
-
-### 🏋️ Workout Session Logger (MVP)
-- Duration OR sets & reps logging  
-- XP calculated immediately  
-- Sessions saved to Hive  
-- Async-safe implementation  
-- Redirects back to the workout list  
-
----
-
-### 🔁 Routine Runner (MVP)
-- Automatically flows through a routine:
-  - Exercise → Sets → Timer → Rest → Next  
-- Countdown timers  
-- Auto-advance logic  
-- Final XP summary  
-- Routine sessions saved to Hive  
-- Integrated with XP Engine  
-
----
-
-### 📚 Exercise Library
-- Basic exercise library UI  
-- Filterable workouts  
-- Navigable from Workouts page  
-
----
-
-### 🎭 Workout Categories + Filtering
-- Category chips added  
-- Provider-based filtering  
-- All workouts / Full Body / Upper / Lower / Abs…  
-
----
-
-### 👤 Firebase Authentication
-- Email + Password login  
-- Register new account  
-- Persisted session until logout  
-- Logout button added to Profile  
-- Auth guard redirects  
-- Uses Firebase Auth SDK  
-
----
-
-### 💾 Local Profile (Hive)
-- User profile stored locally  
-- Name, avatar, goal  
-- Onboarding screen  
-- Edit profile  
-- Loads automatically on app start  
+| Milestone | Status | Description |
+|----------|--------|-------------|
+| **M1 – Core App Setup** | ✅ Completed | Routing, Theming, Hive Setup, Initial CI |
+| **M2 – Workouts & XP Engine** | ✅ Completed | XP System, Session Logger, Firebase Auth |
+| **M3 – Stats & AI Integration** | ✅ Completed | Gemini API, Body Measurements, Advanced Charts, Routine Creator |
+| **M4 – Final Polish & Release** | 🔄 In Progress | UI Polish, Store Optimization, Stability Tests |
 
 ---
 
@@ -104,6 +82,7 @@ lib/
  │    ├── workouts/
  │    ├── routines/
  │    ├── stats/
+ │    ├── measurements/
  │    ├── profile/
  │    └── exercise_library/
  │
@@ -125,26 +104,27 @@ lib/
 
 # 📦 Tech Stack
 
-- Flutter 3.x  
-- Riverpod 2.x  
-- GoRouter  
-- Hive  
-- Firebase Auth  
-- fl_chart  
-- GitHub Actions CI  
+- **Framework:** Flutter 3.x
+- **State Management:** Riverpod 2.x
+- **Navigation:** GoRouter
+- **Local Database:** Hive
+- **Backend / Auth:** Firebase Auth & Realtime Database
+- **AI Integration:** Google Gemini API (`google_generative_ai`)
+- **Visualization:** fl_chart
+- **CI/CD:** GitHub Actions
 
 ---
 
 # 🧪 Tests
 
-- Navigation tests  
-- Theme toggle tests  
-- XP Engine unit tests  
-- App boot test  
+- Navigation tests
+- Theme toggle tests
+- XP Engine unit tests
+- App boot test
 
 ---
 
 # 🔖 Version
 
-**Tag:** m2  
-**Version:** 0.2.0  
+**Tag:** m3
+**Version:** 0.3.0
