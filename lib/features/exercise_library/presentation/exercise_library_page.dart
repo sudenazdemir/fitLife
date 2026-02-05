@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fitlife/features/exercise_library/domain/providers/exercise_providers.dart'; // Provider dosyanın doğru yolu
-// 👇 BU İKİ SATIRI EKLEMEN GEREKİYOR:
-import 'package:go_router/go_router.dart'; 
+import 'package:go_router/go_router.dart';
 import 'package:fitlife/core/constants.dart';
+import 'package:fitlife/features/exercise_library/domain/providers/exercise_providers.dart';
 
 class ExerciseLibraryScreen extends ConsumerWidget {
   const ExerciseLibraryScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. Filtrelenmiş listeyi dinliyoruz (Arama ve filtreleme otomatik tetiklenir)
+    // 1. Filtrelenmiş listeyi dinliyoruz
     final asyncExercises = ref.watch(filteredExercisesProvider);
-
-    // UI'da hangi filtre seçili göstermek için bunu da dinliyoruz
+    // Seçili filtre
     final selectedMuscle = ref.watch(exerciseMuscleFilterProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    // API'den gelen yaygın kas grupları (Manuel liste, istersen API verisinden de çekilebilir)
+    // Yaygın kas grupları
     final muscleGroups = [
       'All',
       'chest',
@@ -24,47 +24,53 @@ class ExerciseLibraryScreen extends ConsumerWidget {
       'legs',
       'arms',
       'shoulders',
+      'abs', // "waist" yerine genelde "abs" kullanılır ama verine göre değişir
       'cardio',
-      'waist'
     ];
 
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Egzersiz Kütüphanesi'),
-        centerTitle: true,
+        title: const Text('Exercise Library', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: false,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: colorScheme.surface,
       ),
       body: Column(
         children: [
-          // --- ARAMA ÇUBUĞU ---
+          // --- ARAMA ÇUBUĞU (MODERN) ---
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Egzersiz ara...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    // Aramayı temizle
-                    ref.read(exerciseSearchQueryProvider.notifier).state = '';
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey.shade100,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withAlpha(128),
+                borderRadius: BorderRadius.circular(16),
               ),
-              onChanged: (value) {
-                // Her harf girişinde provider'ı güncelle -> liste otomatik yenilenir
-                ref.read(exerciseSearchQueryProvider.notifier).state = value;
-              },
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search exercises...',
+                  hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+                  prefixIcon: Icon(Icons.search, color: colorScheme.primary),
+                  suffixIcon: IconButton(
+                    icon: Icon(Icons.clear, color: colorScheme.onSurfaceVariant),
+                    onPressed: () {
+                      ref.read(exerciseSearchQueryProvider.notifier).state = '';
+                    },
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                ),
+                onChanged: (value) {
+                  ref.read(exerciseSearchQueryProvider.notifier).state = value;
+                },
+              ),
             ),
           ),
 
-          // --- KAS GRUBU FİLTRELERİ (YATAY LİSTE) ---
+          // --- KAS GRUBU FİLTRELERİ (YATAY & ŞIK) ---
           SizedBox(
-            height: 50,
+            height: 40,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -72,20 +78,34 @@ class ExerciseLibraryScreen extends ConsumerWidget {
               separatorBuilder: (c, i) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
                 final muscle = muscleGroups[index];
+                final isAll = muscle == 'All';
                 final isSelected =
-                    (selectedMuscle == null && muscle == 'All') ||
-                        (selectedMuscle == muscle);
+                    (selectedMuscle == null && isAll) || (selectedMuscle == muscle);
 
-                return ChoiceChip(
-                  label: Text(muscle.toUpperCase()),
+                return FilterChip(
+                  label: Text(
+                    muscle.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+                    ),
+                  ),
                   selected: isSelected,
+                  showCheckmark: false,
+                  backgroundColor: colorScheme.surface,
+                  selectedColor: colorScheme.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: isSelected ? Colors.transparent : colorScheme.outlineVariant,
+                    ),
+                  ),
                   onSelected: (selected) {
-                    if (muscle == 'All') {
-                      ref.read(exerciseMuscleFilterProvider.notifier).state =
-                          null;
+                    if (isAll) {
+                      ref.read(exerciseMuscleFilterProvider.notifier).state = null;
                     } else {
-                      ref.read(exerciseMuscleFilterProvider.notifier).state =
-                          muscle;
+                      ref.read(exerciseMuscleFilterProvider.notifier).state = muscle;
                     }
                   },
                 );
@@ -93,106 +113,197 @@ class ExerciseLibraryScreen extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
 
           // --- EGZERSİZ LİSTESİ ---
           Expanded(
             child: asyncExercises.when(
               data: (exercises) {
                 if (exercises.isEmpty) {
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.search_off,
-                          size: 64, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Eşleşen egzersiz bulunamadı.',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                      ),
-                    ],
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_off_rounded, size: 80, color: colorScheme.outlineVariant),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No exercises found.',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.bold
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Try adjusting your search or filters.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
 
-                return ListView.builder(
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
                   itemCount: exercises.length,
+                  separatorBuilder: (c, i) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final exercise = exercises[index];
+                    
+                    // Zorluk seviyesine göre renk belirleme
+                    Color difficultyColor;
+                    switch (exercise.difficulty.toLowerCase()) {
+                      case 'beginner': difficultyColor = Colors.green; break;
+                      case 'intermediate': difficultyColor = Colors.orange; break;
+                      case 'advanced': difficultyColor = Colors.red; break;
+                      default: difficultyColor = Colors.grey;
+                    }
 
                     return Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      elevation: 2,
+                      margin: EdgeInsets.zero,
+                      elevation: 0,
+                      color: colorScheme.surfaceContainerHighest.withAlpha(77),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(8),
-                        leading: Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          // GIF GÖSTERİMİ
-                          child: exercise.gifUrl != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    exercise.gifUrl!,
-                                    fit: BoxFit.cover,
-                                    // GIF yüklenirken dönen çember göster
-                                    loadingBuilder:
-                                        (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return const Center(
-                                          child: SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                  strokeWidth: 2)));
-                                    },
-                                    // Hata olursa ikon göster
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(Icons.broken_image,
-                                                color: Colors.grey),
-                                  ),
-                                )
-                              : const Icon(Icons.fitness_center),
-                        ),
-                        title: Text(
-                          exercise.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(
-                              "${exercise.muscleGroup.toUpperCase()} • ${exercise.equipment}",
-                              style: TextStyle(
-                                  color: Colors.grey[700], fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        // 👇 BURAYI GÜNCELLE
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: colorScheme.outlineVariant.withAlpha(128)),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
                         onTap: () {
-                          // Detay sayfasına git ve egzersiz verisini taşı
+                          // Detay sayfasına git (Extra olarak objeyi gönder)
                           context.push(Routes.exerciseDetail, extra: exercise);
                         },
+                        child: IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              // SOL: Renkli Zorluk Çubuğu
+                              Container(
+                                width: 6,
+                                decoration: BoxDecoration(
+                                  color: difficultyColor,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(16),
+                                    bottomLeft: Radius.circular(16),
+                                  ),
+                                ),
+                              ),
+                              
+                              // ORTA: Resim (Hero Animasyonlu)
+                              Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Hero(
+                                  tag: 'exercise_${exercise.id}', // Detay sayfasıyla aynı tag!
+                                  child: Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(13),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: exercise.gifUrl != null
+                                          ? Image.network(
+                                              exercise.gifUrl!,
+                                              fit: BoxFit.contain, // GIF'in tamamı görünsün
+                                              errorBuilder: (c, e, s) => Icon(Icons.fitness_center, color: colorScheme.outline),
+                                            )
+                                          : Icon(Icons.fitness_center, color: colorScheme.outline),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // SAĞ: Bilgiler
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 16, top: 12, bottom: 12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        exercise.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          _buildBadge(theme, exercise.muscleGroup),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              "• ${exercise.equipment}",
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: theme.textTheme.bodySmall?.copyWith(
+                                                color: colorScheme.onSurfaceVariant
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              
+                              // EN SAĞ: Ok İkonu
+                              Padding(
+                                padding: const EdgeInsets.only(right: 16),
+                                child: Icon(
+                                  Icons.chevron_right_rounded, 
+                                  color: colorScheme.onSurfaceVariant.withAlpha(128)
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     );
                   },
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) =>
-                  Center(child: Text('Bir hata oluştu: $err')),
+              error: (err, stack) => Center(
+                child: Text('Error loading library: $err', style: const TextStyle(color: Colors.red)),
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Küçük Badge Widget'ı
+  Widget _buildBadge(ThemeData theme, String text) {
+    final colorScheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withAlpha(25),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: colorScheme.primary,
+        ),
       ),
     );
   }

@@ -18,7 +18,6 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   late final TextEditingController _nameController;
   late final TextEditingController _goalController;
 
-  // Cinsiyet seçimi için değişken
   String? _selectedGender;
   bool _isSaving = false;
 
@@ -30,8 +29,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     _goalController =
         TextEditingController(text: widget.initialProfile?.goal ?? '');
     
-    // Eğer düzenleme modundaysak ve modelde gender varsa buraya ekleyebilirsin
-    // _selectedGender = widget.initialProfile?.gender; 
+    // Gender alanı modelinde varsa:
+    _selectedGender = widget.initialProfile?.gender;
   }
 
   @override
@@ -44,32 +43,29 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   Future<void> _onSavePressed() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Cinsiyet seçimi kontrolü
     if (_selectedGender == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a gender identity.')),
+        SnackBar(
+          content: const Text('Please select a gender identity.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
 
-    final messenger = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
-
-    setState(() {
-      _isSaving = true;
-    });
+    setState(() => _isSaving = true);
 
     final name = _nameController.text.trim();
-    final goal = _goalController.text.trim().isEmpty
-        ? null
-        : _goalController.text.trim();
+    final goal = _goalController.text.trim().isEmpty ? null : _goalController.text.trim();
 
-    // NOT: UserProfile modeline 'gender' alanını eklemeyi unutma!
     final profile = UserProfile(
       name: name,
-      avatar: null, 
+      avatar: null,
       goal: goal,
-      // gender: _selectedGender, // Modeline bu alanı eklediğinde burayı aç
+      totalXp: widget.initialProfile?.totalXp ?? 0,
+      level: widget.initialProfile?.level ?? 1,
+      gender: _selectedGender, 
     );
 
     final repo = ref.read(userProfileRepositoryProvider);
@@ -77,149 +73,213 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     try {
       await repo.saveProfile(profile);
 
-      messenger.showSnackBar(
-        SnackBar(content: Text('Profile saved. Welcome, $name!')),
-      );
-
-      router.pop(); 
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Failed to save profile: $e')),
-      );
-    } finally {
       if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Profile saved! Let\'s go, $name! 🚀'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        context.pop();
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
     final colorScheme = theme.colorScheme;
-
     final isEdit = widget.initialProfile != null;
 
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit Profile' : 'Set Up Profile'),
+        title: Text(isEdit ? 'Edit Profile' : 'Welcome'),
+        centerTitle: true,
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView( // Klavye açılınca taşmayı önlemek için scroll
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isEdit ? 'Update your profile' : 'Let’s personalize FitLife',
-                  style: textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'To give you the best experience, we need to know a little about you.',
-                  style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 32),
-
-                // --- ⚧ GENDER SELECTION SECTION ---
-                Text(
-                  'Gender Identity',
-                  style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildGenderCard(
-                      context,
-                      label: 'Female',
-                      icon: Icons.female,
-                      value: 'Female',
-                      color: Colors.pinkAccent,
-                    ),
-                    _buildGenderCard(
-                      context,
-                      label: 'Male',
-                      icon: Icons.male,
-                      value: 'Male',
-                      color: Colors.blueAccent,
-                    ),
-                    _buildGenderCard(
-                      context,
-                      label: 'Non-Binary',
-                      icon: Icons.transgender, // veya Icons.circle_outlined
-                      value: 'Non-Binary',
-                      color: Colors.purpleAccent,
-                    ),
-                  ],
-                ),
-                // -----------------------------------
-
-                const SizedBox(height: 32),
-
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Name',
-                    hintText: 'e.g. Sude',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: const Icon(Icons.person_outline),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your name.';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                TextFormField(
-                  controller: _goalController,
-                  decoration: InputDecoration(
-                    labelText: 'Fitness goal (optional)',
-                    hintText: 'e.g. Build strength, lose fat...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: const Icon(Icons.flag_outlined),
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton(
-                    onPressed: _isSaving ? null : _onSavePressed,
-                    style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(isEdit ? 'Save Changes' : 'Start Journey'),
-                  ),
-                ),
-              ],
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
             ),
+          ],
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: 56,
+            child: FilledButton(
+              onPressed: _isSaving ? null : _onSavePressed,
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : Text(
+                      isEdit ? 'Save Changes' : 'Start Journey',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+            ),
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isEdit ? Icons.edit_note_rounded : Icons.waving_hand_rounded,
+                    size: 48,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                isEdit ? 'Update your profile' : 'Let’s get to know you',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Help us customize your fitness journey by answering a few quick questions.',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 40),
+
+              Text(
+                'Gender Identity',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly, 
+                children: [
+                  _buildGenderCard(
+                    context,
+                    label: 'Female',
+                    icon: Icons.female,
+                    value: 'Female',
+                    color: Colors.pinkAccent,
+                  ),
+                  _buildGenderCard(
+                    context,
+                    label: 'Male',
+                    icon: Icons.male,
+                    value: 'Male',
+                    color: Colors.blueAccent,
+                  ),
+                  _buildGenderCard(
+                    context,
+                    label: 'Non-Binary',
+                    icon: Icons.transgender,
+                    value: 'Non-Binary',
+                    color: Colors.purpleAccent,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 32),
+
+              Text(
+                'Personal Info',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              
+              TextFormField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: 'Your Name',
+                  hintText: 'e.g. Sude Naz',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  filled: true,
+                  fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your name.';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              TextFormField(
+                controller: _goalController,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: 'Main Goal (Optional)',
+                  hintText: 'e.g. Build muscle, Lose weight',
+                  prefixIcon: const Icon(Icons.track_changes_outlined),
+                  filled: true,
+                  fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // --- 🎨 Custom Gender Card Widget (Referans Görsele Uygun) ---
   Widget _buildGenderCard(
     BuildContext context, {
     required String label,
@@ -240,33 +300,41 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       child: Column(
         children: [
           AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 80,
-            width: 80,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.elasticOut,
+            height: isSelected ? 80 : 70,
+            width: isSelected ? 80 : 70,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isSelected 
-                  ? color.withValues(alpha: 0.2) 
-                  : colorScheme.surfaceContainerHighest,
-              border: isSelected
-                  ? Border.all(color: color, width: 3) // Seçilince kalın çerçeve
-                  : Border.all(color: Colors.transparent, width: 3),
-              boxShadow: isSelected
-                  ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 2)]
-                  : [],
+              color: isSelected
+                  ? color.withValues(alpha: 0.2)
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              // DÜZELTME BURADA:
+              border: Border.all(
+                color: isSelected ? color : Colors.transparent,
+                width: 3, // Genişliği sabit tutup sadece rengi değiştirmek daha stabildir
+              ),
+              // KRİTİK DÜZELTME BURADA:
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected ? color.withValues(alpha: 0.3) : Colors.transparent,
+                  blurRadius: isSelected ? 12 : 0,
+                  offset: isSelected ? const Offset(0, 4) : Offset.zero,
+                ),
+              ],
             ),
             child: Icon(
               icon,
-              size: 32,
+              size: isSelected ? 36 : 28,
               color: isSelected ? color : colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             label,
             style: theme.textTheme.labelMedium?.copyWith(
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected ? color : colorScheme.onSurface,
+              color: isSelected ? color : colorScheme.onSurfaceVariant,
             ),
           ),
         ],

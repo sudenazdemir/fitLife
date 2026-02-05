@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import 'package:fitlife/features/stats/domain/models/stats_data.dart';
 import 'package:fitlife/features/stats/domain/providers/stats_provider.dart';
+import 'package:fitlife/features/profile/domain/providers/user_profile_providers.dart'; // İsim bilgisini almak için
 
 class StatsPage extends ConsumerWidget {
   const StatsPage({super.key});
@@ -12,6 +13,7 @@ class StatsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(statsProvider);
+    final userProfileAsync = ref.watch(userProfileFutureProvider); // Kullanıcı adını çekmek için
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -22,6 +24,7 @@ class StatsPage extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, st) => Center(child: Text('Error: $e')),
           data: (stats) {
+            // İstatistik yoksa boş ekran göster
             if (stats.totalSessions == 0) {
               return _buildEmptyState(theme.textTheme, colorScheme);
             }
@@ -31,15 +34,25 @@ class StatsPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. HEADER: LEVEL & XP
-                  _buildProfileHeader(context, stats),
+                  // 1. HEADER: LEVEL & XP (Gradient ile güzelleştirildi)
+                  // İsim bilgisini profil provider'ından alıp gönderiyoruz
+                  _buildProfileHeader(
+                    context, 
+                    stats, 
+                    userProfileAsync.value?.name ?? "Fitness Hunter"
+                  ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
                   // 2. HABIT TRACKER CHART
+                  Text(
+                    "Weekly Activity", 
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)
+                  ),
+                  const SizedBox(height: 12),
                   _buildChartSection(context, stats.weeklyXp),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
                   // 3. SKILL TRACKER & GOALS
                   Row(
@@ -59,11 +72,13 @@ class StatsPage extends ConsumerWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
-                  // 4. LAST ACTIVITY (Düzeltildi)
+                  // 4. LAST ACTIVITY
                   if (stats.lastSession != null)
-                    _buildLastActivity(context, stats), // Düzeltme: stats nesnesini gönderiyoruz
+                    _buildLastActivity(context, stats),
+                    
+                  const SizedBox(height: 40), // Alt boşluk
                 ],
               ),
             );
@@ -74,89 +89,127 @@ class StatsPage extends ConsumerWidget {
   }
 
   // ---------------------------------------------------------------------------
-  // 1. PROFILE HEADER
+  // 1. PROFILE HEADER (MODERN GRADIENT)
   // ---------------------------------------------------------------------------
-  Widget _buildProfileHeader(BuildContext context, StatsData stats) {
+  Widget _buildProfileHeader(BuildContext context, StatsData stats, String userName) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
+    // Level Hesaplama: 1000 XP = 1 Level
     final int level = (stats.totalXp / 1000).floor() + 1;
     final int currentLevelXp = stats.totalXp % 1000;
-    final double progress = currentLevelXp / 1000;
+    final double progress = (currentLevelXp / 1000).clamp(0.0, 1.0);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer,
+            colorScheme.surfaceContainerHighest,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withAlpha(13),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: colorScheme.primary,
-                child: Icon(Icons.person, color: colorScheme.onPrimary, size: 28),
+              // Avatar
+              Container(
+                padding: const EdgeInsets.all(2), // Border efekti
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colorScheme.primary, width: 2),
+                ),
+                child: CircleAvatar(
+                  radius: 26,
+                  backgroundColor: colorScheme.primary,
+                  child: Text(
+                    userName.isNotEmpty ? userName[0].toUpperCase() : "F",
+                    style: TextStyle(color: colorScheme.onPrimary, fontWeight: FontWeight.bold, fontSize: 20),
+                  ),
+                ),
               ),
               const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Fitness Hunter",
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+              
+              // İsim ve Level
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Text(
-                    "Level $level",
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.bold,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withAlpha(26),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        "Level $level",
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const Spacer(),
+              
+              // Toplam XP (Sağda)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    "${stats.totalXp} XP",
-                    style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold, color: colorScheme.primary),
+                    "${stats.totalXp}",
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900, color: colorScheme.primary),
                   ),
                   Text(
-                    "Total Earned",
-                    style: theme.textTheme.labelSmall,
+                    "Total XP",
+                    style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.outline),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
+          
+          // Progress Bar
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Progress", style: theme.textTheme.labelSmall),
-                  Text("$currentLevelXp / 1000 XP", style: theme.textTheme.labelSmall),
+                  Text("Next Level Progress", style: theme.textTheme.labelSmall),
+                  Text("$currentLevelXp / 1000 XP", style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold)),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
                   value: progress,
-                  minHeight: 8,
-                  backgroundColor: colorScheme.surfaceDim,
-                  color: colorScheme.primary,
+                  minHeight: 10,
+                  backgroundColor: Colors.white.withAlpha(128),
+                  valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
                 ),
               ),
             ],
@@ -179,95 +232,80 @@ class StatsPage extends ConsumerWidget {
     final targetMaxY = maxY == 0 ? 100.0 : maxY * 1.2;
 
     return Container(
-      padding: const EdgeInsets.all(20),
-      height: 250,
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+      height: 220,
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(20),
+        color: colorScheme.surfaceContainerHighest.withAlpha(77),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colorScheme.outlineVariant.withAlpha(128)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Activity (Last 7 Days)",
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              Icon(Icons.bar_chart, color: colorScheme.primary),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: targetMaxY,
-                barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (group) => colorScheme.inverseSurface,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      return BarTooltipItem(
-                        '${rod.toY.toInt()} XP',
-                        TextStyle(
-                          color: colorScheme.onInverseSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      );
-                    },
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: targetMaxY,
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipColor: (group) => colorScheme.inverseSurface,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                return BarTooltipItem(
+                  '${rod.toY.toInt()} XP',
+                  TextStyle(
+                    color: colorScheme.onInverseSurface,
+                    fontWeight: FontWeight.bold,
                   ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= weeklyData.length) return const SizedBox();
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            DateFormat('E').format(weeklyData[index].date)[0],
-                            style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                ),
-                gridData: const FlGridData(show: false),
-                borderData: FlBorderData(show: false),
-                barGroups: weeklyData.asMap().entries.map((entry) {
-                  return BarChartGroupData(
-                    x: entry.key,
-                    barRods: [
-                      BarChartRodData(
-                        toY: entry.value.xp.toDouble(),
-                        color: colorScheme.primary,
-                        width: 16,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                        backDrawRodData: BackgroundBarChartRodData(
-                          show: true,
-                          toY: targetMaxY,
-                          color: colorScheme.surfaceDim.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
+                );
+              },
             ),
           ),
-        ],
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index < 0 || index >= weeklyData.length) return const SizedBox();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      DateFormat('E').format(weeklyData[index].date)[0],
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          gridData: const FlGridData(show: false),
+          borderData: FlBorderData(show: false),
+          barGroups: weeklyData.asMap().entries.map((entry) {
+            final isToday = entry.key == 6; // Son eleman bugündür (liste sıralıysa)
+            return BarChartGroupData(
+              x: entry.key,
+              barRods: [
+                BarChartRodData(
+                  toY: entry.value.xp.toDouble(),
+                  // Bugünü farklı renkte göster
+                  color: isToday ? colorScheme.primary : colorScheme.primary.withAlpha(153),
+                  width: 14,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                  backDrawRodData: BackgroundBarChartRodData(
+                    show: true,
+                    toY: targetMaxY,
+                    color: colorScheme.surfaceDim.withAlpha(128),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -288,14 +326,20 @@ class StatsPage extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Stats Tracker", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          Row(
+            children: [
+              Icon(Icons.auto_graph, size: 18, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Text("Stats", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+            ],
+          ),
           const SizedBox(height: 16),
           _buildSkillRow(
             context,
             label: "Streak",
             valueText: "${stats.currentStreak} Days",
             progress: (stats.currentStreak / 30).clamp(0.0, 1.0),
-            icon: Icons.local_fire_department,
+            icon: Icons.local_fire_department_rounded,
             color: Colors.orange,
           ),
           const SizedBox(height: 12),
@@ -304,7 +348,7 @@ class StatsPage extends ConsumerWidget {
             label: "Sessions",
             valueText: "${stats.totalSessions}",
             progress: (stats.totalSessions / 100).clamp(0.0, 1.0),
-            icon: Icons.fitness_center,
+            icon: Icons.fitness_center_rounded,
             color: Colors.blue,
           ),
         ],
@@ -353,8 +397,13 @@ class StatsPage extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // Basit bir hedef mantığı: Haftada 3 antrenman (Örnek)
+    final weeklySessions = stats.weeklyXp.where((d) => d.xp > 0).length;
+    final weeklyGoal = 3;
+    final progress = (weeklySessions / weeklyGoal).clamp(0.0, 1.0);
+
     return Container(
-      height: 155,
+      height: 160, // Yüksekliği sabitledik
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
@@ -362,7 +411,7 @@ class StatsPage extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          Text("Daily Goal", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          Text("Weekly Goal", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
           const Spacer(),
           Stack(
             alignment: Alignment.center,
@@ -371,31 +420,37 @@ class StatsPage extends ConsumerWidget {
                 width: 70,
                 height: 70,
                 child: CircularProgressIndicator(
-                  value: 0.75,
+                  value: progress,
                   strokeWidth: 8,
                   backgroundColor: colorScheme.surfaceDim,
-                  color: colorScheme.primary,
+                  color: colorScheme.tertiary,
                   strokeCap: StrokeCap.round,
                 ),
               ),
-              const Text("75%", style: TextStyle(fontWeight: FontWeight.bold)),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "${(progress * 100).toInt()}%",
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              ),
             ],
           ),
           const Spacer(),
+          Text("$weeklySessions / $weeklyGoal workouts", style: const TextStyle(fontSize: 10, color: Colors.grey)),
         ],
       ),
     );
   }
 
   // ---------------------------------------------------------------------------
-  // 5. LAST ACTIVITY (DÜZELTİLDİ)
+  // 5. LAST ACTIVITY
   // ---------------------------------------------------------------------------
-  // Bu fonksiyon artık SessionData yerine StatsData alıyor, böylece tip hatası olmaz.
   Widget _buildLastActivity(BuildContext context, StatsData stats) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
-    // stats.lastSession'ın null olmadığı yerde çağrıldığını biliyoruz
     final session = stats.lastSession!; 
 
     return Column(
@@ -405,20 +460,29 @@ class StatsPage extends ConsumerWidget {
           "Last Activity",
           style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: colorScheme.outlineVariant.withAlpha(128)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(5),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              )
+            ],
           ),
           child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
+                color: colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.history, color: colorScheme.onPrimaryContainer),
+              child: Icon(Icons.history_toggle_off, color: colorScheme.onSecondaryContainer),
             ),
             title: Text(
               session.name,
@@ -426,19 +490,21 @@ class StatsPage extends ConsumerWidget {
             ),
             subtitle: Text(
               DateFormat('MMM d, y • H:mm').format(session.date),
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.1),
+                color: Colors.green.withAlpha(26),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
+                border: Border.all(color: Colors.green.withAlpha(51)),
               ),
               child: Text(
                 '+${session.xpEarned} XP',
-                style: TextStyle(
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: colorScheme.primary,
+                  color: Colors.green,
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -448,20 +514,28 @@ class StatsPage extends ConsumerWidget {
     );
   }
 
+  // Boş Durum Ekranı
   Widget _buildEmptyState(TextTheme textTheme, ColorScheme colorScheme) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.bar_chart, size: 64, color: colorScheme.outlineVariant),
-          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withAlpha(77),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.bar_chart_rounded, size: 64, color: colorScheme.primary.withAlpha(128)),
+          ),
+          const SizedBox(height: 24),
           Text(
             'No Data Yet',
             style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Complete your first workout to\nunlock insights!',
+            'Complete your first workout to\nunlock detailed insights!',
             textAlign: TextAlign.center,
             style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
           ),

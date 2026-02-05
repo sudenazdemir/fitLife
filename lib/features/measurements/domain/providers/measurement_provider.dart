@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fitlife/features/measurements/domain/models/body_measurement.dart';
 import 'package:fitlife/features/measurements/domain/repositories/measurement_repository.dart';
@@ -6,16 +7,20 @@ import 'package:fitlife/features/measurements/domain/repositories/measurement_re
 final measurementRepositoryProvider = Provider((ref) => MeasurementRepository());
 
 // Liste State Provider
-final measurementListProvider = AsyncNotifierProvider<MeasurementListNotifier, List<BodyMeasurement>>(() {
-  return MeasurementListNotifier();
-});
+final measurementListProvider = AsyncNotifierProvider.autoDispose<MeasurementListNotifier, List<BodyMeasurement>>(MeasurementListNotifier.new);
 
-class MeasurementListNotifier extends AsyncNotifier<List<BodyMeasurement>> {
+class MeasurementListNotifier extends AutoDisposeAsyncNotifier<List<BodyMeasurement>> {
   late MeasurementRepository _repository;
 
   @override
   Future<List<BodyMeasurement>> build() async {
     _repository = ref.read(measurementRepositoryProvider);
+    
+    // Kullanıcı giriş yapmamışsa boş liste dön (Hata almamak için)
+    if (FirebaseAuth.instance.currentUser == null) {
+      return [];
+    }
+
     return _repository.getAllMeasurements();
   }
 
@@ -26,8 +31,9 @@ class MeasurementListNotifier extends AsyncNotifier<List<BodyMeasurement>> {
     double? hip,
     required DateTime date,
   }) async {
+    // Yeni kayıt için ID'yi boş bırakıyoruz, Repo oluşturacak
     final newMeasurement = BodyMeasurement(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: '', 
       date: date,
       weight: weight,
       bodyFat: bodyFat,
@@ -35,10 +41,9 @@ class MeasurementListNotifier extends AsyncNotifier<List<BodyMeasurement>> {
       hip: hip,
     );
 
-    // Repoya ekle
     await _repository.addMeasurement(newMeasurement);
     
-    // Listeyi yenile (UI güncellensin)
+    // Listeyi yenile (Firebase'den tekrar çek)
     ref.invalidateSelf();
   }
   

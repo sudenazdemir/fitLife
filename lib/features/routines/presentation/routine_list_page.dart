@@ -3,11 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:fitlife/core/constants.dart';
-import 'package:fitlife/core/services/notification_service.dart';
 import 'package:fitlife/features/routines/domain/models/routine.dart';
 import 'package:fitlife/features/routines/domain/providers/routine_providers.dart';
 
-// 👇 1. BURAYI EKLE (Dosya yolunun doğru olduğundan emin ol)
+// 👇 Smart Log ekranı importu
 import 'package:fitlife/features/workouts/presentation/smart_log_screen.dart';
 
 class RoutineListPage extends ConsumerWidget {
@@ -15,56 +14,86 @@ class RoutineListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // GÜNCELLEME: StreamProvider dinleniyor
     final routinesAsync = ref.watch(routinesListProvider);
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: colorScheme.surface, // Arka plan rengi
       appBar: AppBar(
-        title: const Text('My Routines'),
-        // 👇 2. BURAYI EKLE: Sağ üst köşeye AI butonu
+        title: const Text('My Routines', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: false,
         actions: [
-          IconButton(
-            onPressed: () {
-              // Butona basınca SmartLogScreen açılır
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SmartLogScreen()),
-              );
-            },
-            icon: const Icon(Icons.auto_awesome,
-                color: Colors.deepPurple), // ✨ İkonu
-            tooltip: 'AI Quick Log',
+          // AI Quick Log Butonu
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer.withAlpha(77),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SmartLogScreen()),
+                );
+              },
+              icon: const Icon(Icons.auto_awesome),
+              color: colorScheme.primary, // Tema rengine uyumlu
+              tooltip: 'AI Quick Log',
+            ),
           ),
-          const SizedBox(width: 8), // Sağa yapışmasın diye minik boşluk
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           context.push(Routes.routineCreate);
         },
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text("New Routine"),
+        elevation: 2,
       ),
       body: routinesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, s) => Center(child: Text('Error: $e')),
         data: (routines) {
+          // --- EMPTY STATE (BOŞ DURUM) TASARIMI ---
           if (routines.isEmpty) {
             return Center(
-              child: Text(
-                'No routines yet.\nTap + to create one.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.fitness_center_outlined,
+                    size: 80,
+                    color: colorScheme.onSurface.withAlpha(51),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No routines found',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Create your first workout plan\nto start tracking.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             );
           }
 
+          // --- LİSTE TASARIMI ---
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             itemCount: routines.length,
-            separatorBuilder: (c, i) => const SizedBox(height: 12),
+            separatorBuilder: (c, i) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               final routine = routines[index];
               return _RoutineCard(routine: routine);
@@ -81,88 +110,164 @@ class _RoutineCard extends ConsumerWidget {
 
   const _RoutineCard({required this.routine});
 
-  String _formatDays(List<int> days) {
-    if (days.length == 7) return 'Every Day';
-    if (days.isEmpty) return 'No days set';
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days.map((d) => labels[d - 1]).join(', ');
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Card(
       elevation: 0,
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
+      color: colorScheme.surfaceContainerHighest.withAlpha(128),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: colorScheme.outlineVariant.withAlpha(128)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
         onTap: () {
-          // Detay sayfasına yönlendir
           context.push(Routes.routineDetail, extra: routine);
         },
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Row(
-          children: [
-            Expanded(
-                child: Text(routine.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold))),
-            if (routine.isReminderEnabled)
-              Icon(Icons.notifications_active,
-                  size: 16, color: colorScheme.primary.withValues(alpha: 0.7)),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              _formatDays(routine.daysOfWeek),
-              style: TextStyle(color: colorScheme.primary),
-            ),
-            const SizedBox(height: 2),
-            // GÜNCELLEME: WorkoutIds -> ExerciseIds ve metin değişimi
-            Text('${routine.exerciseIds.length} Exercises assigned'),
-          ],
-        ),
-        trailing: PopupMenuButton(
-          icon: const Icon(Icons.more_vert),
-          onSelected: (value) async {
-            if (value == 'edit') {
-              context.push(Routes.routineCreate, extra: routine);
-            } else if (value == 'delete') {
-              await NotificationService().cancelRoutineNotifications(routine);
-              // Provider değiştiği için fonksiyonu buradan çağırıyoruz
-              await ref
-                  .read(routineRepositoryProvider)
-                  .deleteRoutine(routine.id);
-              // Stream olduğu için invalidate etmeye gerek yok, otomatik güncellenir!
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ÜST KISIM: İsim ve Menü
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.edit, size: 20),
-                  SizedBox(width: 8),
-                  Text('Edit')
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          routine.name,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        // Egzersiz Sayısı Badge'i
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withAlpha(26),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${routine.exerciseIds.length} Exercises',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Edit/Delete Menüsü
+                  _buildPopupMenu(context, ref, colorScheme),
                 ],
               ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
+              
+              const SizedBox(height: 16),
+              Divider(height: 1, color: colorScheme.outlineVariant.withAlpha(128)),
+              const SizedBox(height: 12),
+
+              // ALT KISIM: Günler (Yuvarlak Baloncuklar)
+              Row(
                 children: [
-                  Icon(Icons.delete, size: 20, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Delete', style: TextStyle(color: Colors.red))
+                  Icon(Icons.calendar_today_outlined, 
+                       size: 16, 
+                       color: colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildDaysRow(context, routine.daysOfWeek),
+                  ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  // Günleri yuvarlak ikonlar (M, T, W...) olarak gösterir
+  Widget _buildDaysRow(BuildContext context, List<int> days) {
+    // 1: Mon, 7: Sun
+    const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: List.generate(7, (index) {
+        final dayIndex = index + 1; // 1-based index
+        final isActive = days.contains(dayIndex);
+
+        return Container(
+          width: 24,
+          height: 24,
+          margin: const EdgeInsets.only(left: 4),
+          decoration: BoxDecoration(
+            color: isActive ? colorScheme.primary : Colors.transparent,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isActive ? colorScheme.primary : colorScheme.outlineVariant,
+              width: 1,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              weekDays[index],
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: isActive ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildPopupMenu(BuildContext context, WidgetRef ref, ColorScheme colorScheme) {
+    return PopupMenuButton(
+      icon: Icon(Icons.more_horiz, color: colorScheme.onSurfaceVariant),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) async {
+        if (value == 'edit') {
+          context.push(Routes.routineCreate, extra: routine);
+        } else if (value == 'delete') {
+          await ref.read(routineRepositoryProvider).deleteRoutine(routine.id);
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'edit',
+          child: Row(
+            children: [
+              Icon(Icons.edit_outlined, size: 20),
+              SizedBox(width: 8),
+              Text('Edit Routine'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline, size: 20, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Delete', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,9 +1,8 @@
 import 'dart:async';
-// DÜZELTME: dart:ui kaldırıldı.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:fitlife/core/constants.dart';
 import 'package:fitlife/features/workouts/domain/models/workout_session.dart';
@@ -23,27 +22,31 @@ class RunnerSet {
   int? durationSeconds;
   bool isCompleted;
 
-  RunnerSet(
-      {required this.index,
-      this.weight,
-      this.reps,
-      this.durationSeconds,
-      this.isCompleted = false});
+  RunnerSet({
+    required this.index,
+    this.weight,
+    this.reps,
+    this.durationSeconds,
+    this.isCompleted = false,
+  });
 }
 
 class RunnerExercise {
   final String id;
   final String name;
+  final String muscleGroup; // Eklendi: Görsellik için
   final ExerciseType type;
   final int targetRestSeconds;
   final List<RunnerSet> sets;
 
-  RunnerExercise(
-      {required this.id,
-      required this.name,
-      required this.type,
-      required this.targetRestSeconds,
-      required this.sets});
+  RunnerExercise({
+    required this.id,
+    required this.name,
+    required this.muscleGroup,
+    required this.type,
+    required this.targetRestSeconds,
+    required this.sets,
+  });
 
   double get totalVolume => sets
       .where((s) => s.isCompleted && s.weight != null && s.reps != null)
@@ -63,6 +66,7 @@ class _RoutineRunnerPageState extends ConsumerState<RoutineRunnerPage> {
   final Stopwatch _globalStopwatch = Stopwatch();
   Timer? _globalTimerTicker;
   String _globalFormattedTime = "00:00";
+  
   Timer? _restTimer;
   int _restRemaining = 0;
   bool _isResting = false;
@@ -88,19 +92,30 @@ class _RoutineRunnerPageState extends ConsumerState<RoutineRunnerPage> {
 
     for (String id in widget.routine!.exerciseIds) {
       try {
-        // Eğer ID bulunamazsa hata vermemesi için firstWhere ... orElse kullanımı daha güvenlidir ama
-        // şimdilik try-catch ile idare ediyoruz.
-        final exercise = exerciseBox.values.firstWhere((e) => e.id == id);
+        // Egzersizi Hive'dan buluyoruz
+        final exercise = exerciseBox.values.firstWhere(
+          (e) => e.id == id,
+          orElse: () => Exercise(
+            id: id, 
+            name: 'Unknown Exercise', 
+            muscleGroup: 'General', 
+            description: '',
+            equipment: '',
+            difficulty: '',
+
+          ),
+        );
 
         loaded.add(RunnerExercise(
           id: exercise.id,
           name: exercise.name,
-          type: ExerciseType.weighted,
-          targetRestSeconds: 60,
+          muscleGroup: exercise.muscleGroup, // Yeni alan
+          type: ExerciseType.weighted, // Varsayılan tip
+          targetRestSeconds: 60, // Varsayılan dinlenme
           sets: List.generate(3, (i) => RunnerSet(index: i)),
         ));
       } catch (e) {
-        debugPrint("Egzersiz bulunamadı (ID: $id): $e");
+        debugPrint("Egzersiz yüklenirken hata (ID: $id): $e");
       }
     }
 
@@ -132,12 +147,15 @@ class _RoutineRunnerPageState extends ConsumerState<RoutineRunnerPage> {
 
   int get _totalSetsCompleted => _exercises.fold(
       0, (sum, ex) => sum + ex.sets.where((s) => s.isCompleted).length);
+  
   double get _totalVolume =>
       _exercises.fold(0, (sum, ex) => sum + ex.totalVolume);
 
   void _toggleSetCompletion(
       RunnerExercise exercise, RunnerSet set, bool? value) {
     setState(() => set.isCompleted = value ?? false);
+    
+    // Set tamamlandıysa ve dinlenme süresi varsa sayacı başlat
     if (set.isCompleted && exercise.targetRestSeconds > 0) {
       _startRest(exercise.targetRestSeconds);
     }
@@ -170,37 +188,57 @@ class _RoutineRunnerPageState extends ConsumerState<RoutineRunnerPage> {
     _globalStopwatch.stop();
     final router = GoRouter.of(context);
     final totalMinutes = _globalStopwatch.elapsed.inMinutes;
-  // 1. XP Hesapla
+
+    // 1. XP Hesapla (XpEngine kullanarak)
     final xp = ref.read(xpEngineProvider).calculateXp(
-      durationMinutes: totalMinutes == 0 ? 1 : totalMinutes, // En az 1 dk say
-      difficulty: 'Routine',
+      durationMinutes: totalMinutes == 0 ? 1 : totalMinutes, 
+      difficulty: 'Routine', // Rutin olduğu için bonus alır
       sets: _totalSetsCompleted,
     );
 
+    // 2. Session Oluştur (Geçmiş listesi için)
     final session = WorkoutSession(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       workoutId: widget.routine?.id ?? 'quick_start',
       name: widget.routine?.name ?? 'Quick Workout',
       category: 'Routine',
       durationMinutes: totalMinutes,
-      calories: 0,
+      calories: (totalMinutes * 5), // Basit kalori hesabı
       date: DateTime.now(),
       xpEarned: xp,
     );
 
-    await WorkoutSessionRepository().addSession(session);
-    // 👇 3. YENİ KISIM: KULLANICIYA XP YÜKLE
-    await ref.read(userProvider.notifier).addXp(xp);
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Awesome! Earned $xp XP')));
+    try {
+      // 3. Geçmişe Kaydet (Grafikler için)
+      await WorkoutSessionRepository().addSession(session);
 
-      // 👇 ESKİSİ: if (router.canPop()) router.pop(); else router.go(...);
-      // 👇 YENİSİ:
-      if (router.canPop()) {
-        router.pop();
-      } else {
-        router.go(Routes.stats);
+      // 4. 🔥 KULLANICI XP'SİNİ GÜNCELLE (Stats ve Profil için KRİTİK ADIM) 🔥
+      // Bu satır olmazsa Level ve Total XP artmaz!
+      await ref.read(userProvider.notifier).addXp(xp);
+
+      // 5. İstatistikleri Yenile (Gerekirse)
+      // statsProvider genellikle userProvider'ı dinlediği için otomatik güncellenir.
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Awesome! Earned $xp XP 🔥'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          )
+        );
+
+        if (router.canPop()) {
+          router.pop();
+        } else {
+          router.go(Routes.stats);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving workout: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -208,6 +246,7 @@ class _RoutineRunnerPageState extends ConsumerState<RoutineRunnerPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -216,130 +255,189 @@ class _RoutineRunnerPageState extends ConsumerState<RoutineRunnerPage> {
     if (_exercises.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Routine Runner')),
-        body: const Center(
-            child: Text("This routine has no exercises assigned.")),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.warning_amber_rounded, size: 64, color: colorScheme.error),
+              const SizedBox(height: 16),
+              const Text("No exercises found in this routine."),
+            ],
+          ),
+        ),
       );
     }
 
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(widget.routine?.name ?? 'Routine Runner'),
+        centerTitle: false,
         actions: [
+          // Timer Badge
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             margin: const EdgeInsets.only(right: 16),
             decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(20)),
-            child: Row(children: [
-              const Icon(Icons.timer, size: 16),
-              const SizedBox(width: 6),
-              Text(_globalFormattedTime,
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colorScheme.primary.withAlpha(51)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.timer_outlined, size: 18, color: colorScheme.onPrimaryContainer),
+                const SizedBox(width: 8),
+                Text(
+                  _globalFormattedTime,
                   style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onPrimaryContainer))
-            ]),
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onPrimaryContainer,
+                    fontFamily: 'monospace'
+                  ),
+                )
+              ],
+            ),
           )
         ],
       ),
       body: Column(
         children: [
+          // İstatistik Başlığı
           _buildStatsHeader(theme),
+          
           Expanded(
             child: ListView.separated(
-              padding: const EdgeInsets.only(bottom: 100),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Alt kısımda butona yer bırak
               itemCount: _exercises.length,
-              separatorBuilder: (c, i) => const SizedBox(height: 16),
+              separatorBuilder: (c, i) => const SizedBox(height: 20),
               itemBuilder: (context, index) {
                 final exercise = _exercises[index];
                 return _ExerciseCard(
                   exercise: exercise,
-                  onSetChanged: (set, val) =>
-                      _toggleSetCompletion(exercise, set, val),
+                  onSetChanged: (set, val) => _toggleSetCompletion(exercise, set, val),
                 );
               },
             ),
           ),
         ],
       ),
+      // Dinlenme Modu veya Bitir Butonu
       bottomSheet: _isResting
           ? _buildRestOverlay(theme)
           : Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                  color: theme.scaffoldBackgroundColor,
-                  boxShadow: const [
-                    BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 4,
-                        offset: Offset(0, -2))
-                  ]),
+                color: theme.scaffoldBackgroundColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(13),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  )
+                ],
+              ),
               child: SafeArea(
-                  child: SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                          onPressed: _finishWorkout,
-                          icon: const Icon(Icons.check_circle),
-                          label: const Text('FINISH WORKOUT'),
-                          style: FilledButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16))))),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: FilledButton.icon(
+                    onPressed: _finishWorkout,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('FINISH WORKOUT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+              ),
             ),
     );
   }
 
   Widget _buildStatsHeader(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(bottom: BorderSide(color: theme.dividerColor))),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-        Column(children: [
-          Text('$_totalSetsCompleted',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary)),
-          Text('Sets', style: theme.textTheme.labelSmall)
-        ]),
-        Column(children: [
-          Text('${_totalVolume.toInt()} kg',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary)),
-          Text('Volume', style: theme.textTheme.labelSmall)
-        ]),
-      ]),
+        color: theme.colorScheme.surface,
+        border: Border(bottom: BorderSide(color: theme.dividerColor.withAlpha(128))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildStatItem(theme, '$_totalSetsCompleted', 'Sets Completed'),
+          Container(width: 1, height: 30, color: theme.dividerColor),
+          _buildStatItem(theme, '${_totalVolume.toInt()} kg', 'Total Volume'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(ThemeData theme, String value, String label) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildRestOverlay(ThemeData theme) {
     return Container(
-      color: theme.colorScheme.inverseSurface,
+      color: const Color(0xFF1A1A1A), // Koyu tema dinlenme modu
       padding: const EdgeInsets.all(24),
       width: double.infinity,
       child: SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Resting...',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(color: theme.colorScheme.onInverseSurface)),
-          const SizedBox(height: 8),
-          // FontFeature kaldırıldı
-          Text("00:${_restRemaining.toString().padLeft(2, '0')}",
-              style: theme.textTheme.displayMedium?.copyWith(
-                  color: theme.colorScheme.tertiary,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          OutlinedButton(onPressed: _skipRest, child: const Text('SKIP REST'))
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Rest & Recover',
+              style: theme.textTheme.titleMedium?.copyWith(color: Colors.white70),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "00:${_restRemaining.toString().padLeft(2, '0')}",
+              style: theme.textTheme.displayLarge?.copyWith(
+                color: const Color(0xFFF2C24F), // Sarı vurgu
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace'
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _skipRest,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white30),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('SKIP REST'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 // -----------------------------------------------------------------------------
-// 🔹 SUB-WIDGETS (EKSİK OLAN KISIMLAR BURAYA EKLENDİ)
+// 🔹 ALT BİLEŞENLER (SUB-WIDGETS)
 // -----------------------------------------------------------------------------
 
 class _ExerciseCard extends StatelessWidget {
@@ -350,47 +448,70 @@ class _ExerciseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      color: colorScheme.surfaceContainerHighest.withAlpha(25),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: colorScheme.outlineVariant.withAlpha(25)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Egzersiz Başlığı ve Kas Grubu
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  exercise.name,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: colorScheme.primaryContainer,
+                  child: Text(
+                    exercise.muscleGroup.isNotEmpty ? exercise.muscleGroup[0].toUpperCase() : 'E',
+                    style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
+                  ),
                 ),
-                Icon(
-                  exercise.type == ExerciseType.duration
-                      ? Icons.timer_outlined
-                      : Icons.fitness_center,
-                  color: Theme.of(context).colorScheme.tertiary,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        exercise.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                      ),
+                      Text(
+                        exercise.muscleGroup,
+                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {}, // Gelecekte info modalı açılabilir
+                  icon: Icon(Icons.info_outline, color: colorScheme.onSurfaceVariant, size: 20),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+            
+            // Başlıklar (Set, kg, Reps)
             if (exercise.type == ExerciseType.weighted)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 8, right: 40),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8, right: 40),
                 child: Row(
                   children: [
-                    SizedBox(
-                        width: 30,
-                        child: Text('Set', textAlign: TextAlign.center)),
-                    Expanded(child: Text('kg', textAlign: TextAlign.center)),
-                    Expanded(child: Text('Reps', textAlign: TextAlign.center)),
+                    const SizedBox(width: 40, child: Text('SET', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
+                    Expanded(child: Text('KG', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.primary))),
+                    Expanded(child: Text('REPS', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.primary))),
                   ],
                 ),
               ),
+
+            // Set Listesi
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -399,11 +520,9 @@ class _ExerciseCard extends StatelessWidget {
               itemBuilder: (context, index) {
                 final set = exercise.sets[index];
                 if (exercise.type == ExerciseType.duration) {
-                  return _DurationSetRow(
-                      set: set, onCompleted: (val) => onSetChanged(set, val));
+                  return _DurationSetRow(set: set, onCompleted: (val) => onSetChanged(set, val));
                 } else {
-                  return _WeightedSetRow(
-                      set: set, onCompleted: (val) => onSetChanged(set, val));
+                  return _WeightedSetRow(set: set, onCompleted: (val) => onSetChanged(set, val));
                 }
               },
             ),
@@ -431,10 +550,8 @@ class _WeightedSetRowState extends State<_WeightedSetRow> {
   @override
   void initState() {
     super.initState();
-    _kgController =
-        TextEditingController(text: widget.set.weight?.toString() ?? '');
-    _repsController =
-        TextEditingController(text: widget.set.reps?.toString() ?? '');
+    _kgController = TextEditingController(text: widget.set.weight?.toString() ?? '');
+    _repsController = TextEditingController(text: widget.set.reps?.toString() ?? '');
   }
 
   @override
@@ -453,74 +570,107 @@ class _WeightedSetRowState extends State<_WeightedSetRow> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final isDone = widget.set.isCompleted;
 
+    // Tamamlanmışsa yeşilimsi, değilse gri
     final bgColor = isDone
-        ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-        : colorScheme.surfaceContainerHighest;
+        ? const Color(0xFF4CAF50).withAlpha(25) 
+        : colorScheme.surface;
 
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        border: isDone ? Border.all(color: Colors.green.withAlpha(25)) : null,
       ),
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       child: Row(
         children: [
-          SizedBox(
-              width: 30,
+          // Set Numarası
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: isDone ? Colors.green : colorScheme.surfaceContainerHighest,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
               child: Text(
                 '${widget.set.index + 1}',
-                textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDone ? colorScheme.primary : null),
-              )),
+                  fontWeight: FontWeight.bold,
+                  color: isDone ? Colors.white : colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ),
+          
+          // KG Input
           Expanded(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 8),
               height: 40,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withAlpha(25),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: TextField(
                 controller: _kgController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 textAlign: TextAlign.center,
                 enabled: !isDone,
+                style: const TextStyle(fontWeight: FontWeight.bold),
                 decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.only(bottom: 8),
-                    hintText: '-',
-                    border: InputBorder.none),
+                  contentPadding: EdgeInsets.only(bottom: 8), // Metni ortalar
+                  hintText: '-',
+                  border: InputBorder.none,
+                ),
                 onChanged: (_) => _updateModel(),
               ),
             ),
           ),
+
+          // Reps Input
           Expanded(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 8),
               height: 40,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withAlpha(25),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: TextField(
                 controller: _repsController,
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
                 enabled: !isDone,
+                style: const TextStyle(fontWeight: FontWeight.bold),
                 decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.only(bottom: 8),
-                    hintText: '-',
-                    border: InputBorder.none),
+                  contentPadding: EdgeInsets.only(bottom: 8),
+                  hintText: '-',
+                  border: InputBorder.none,
+                ),
                 onChanged: (_) => _updateModel(),
               ),
             ),
           ),
-          Checkbox(
-            value: isDone,
-            activeColor: colorScheme.primary,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            onChanged: (val) {
-              _updateModel();
-              widget.onCompleted(val);
-            },
+
+          // Checkbox
+          Transform.scale(
+            scale: 1.2,
+            child: Checkbox(
+              value: isDone,
+              activeColor: Colors.green,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              onChanged: (val) {
+                // Focus'u kaldır ki klavye kapansın
+                FocusScope.of(context).unfocus();
+                _updateModel();
+                widget.onCompleted(val);
+              },
+            ),
           ),
         ],
       ),
@@ -581,35 +731,33 @@ class _DurationSetRowState extends State<_DurationSetRow> {
     final theme = Theme.of(context);
     final isDone = widget.set.isCompleted;
 
-    final bgColor = isDone
-        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-        : theme.colorScheme.surfaceContainerHighest;
-
     return Container(
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        color: isDone ? Colors.green.withAlpha(25) : theme.colorScheme.surfaceContainerHighest.withAlpha(25),
+        borderRadius: BorderRadius.circular(12),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: const EdgeInsets.all(12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('Set ${widget.set.index + 1}',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text('Set ${widget.set.index + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          
           FilledButton.icon(
             onPressed: isDone ? null : _toggleTimer,
             icon: Icon(_isRunning ? Icons.pause : Icons.play_arrow),
             label: Text(
               '${(_remaining ~/ 60).toString().padLeft(2, '0')}:${(_remaining % 60).toString().padLeft(2, '0')}',
+              style: const TextStyle(fontFamily: 'monospace'),
             ),
             style: FilledButton.styleFrom(
-              backgroundColor: _isRunning
-                  ? theme.colorScheme.error
-                  : theme.colorScheme.primary,
+              backgroundColor: _isRunning ? theme.colorScheme.error : theme.colorScheme.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
           ),
+
           Checkbox(
             value: isDone,
+            activeColor: Colors.green,
             onChanged: widget.onCompleted,
           )
         ],

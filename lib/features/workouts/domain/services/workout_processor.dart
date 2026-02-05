@@ -1,34 +1,36 @@
 import 'package:flutter/foundation.dart';
-import 'package:hive/hive.dart';
-import 'package:uuid/uuid.dart'; // flutter pub add uuid yaptığından emin ol
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 // Modeller
 import 'package:fitlife/features/workouts/domain/models/workout_session.dart';
-import 'package:fitlife/features/profile/domain/models/user_profile.dart';
 
 // Servisler
-import 'package:fitlife/features/workouts/domain/services/xp_engine.dart';
 import 'package:fitlife/core/services/ai_workout_service.dart';
 
+// Provider'lar (Repository'lere erişmek için şart)
+import 'package:fitlife/features/workouts/domain/providers/workout_session_providers.dart';
+import 'package:fitlife/features/auth/domain/user_provider.dart';
+import 'package:fitlife/features/workouts/domain/providers/xp_engine_provider.dart';
+
+// Bu sınıfı Provider ile sarmalıyoruz ki diğer provider'lara (Repository, User) erişebilsin
+final workoutProcessorProvider = Provider((ref) => WorkoutProcessor(ref));
+
 class WorkoutProcessor {
+  final Ref _ref;
   final AiWorkoutService _aiService = AiWorkoutService();
-  final XpEngine _xpEngine = XpEngine();
   final Uuid _uuid = const Uuid();
 
+  WorkoutProcessor(this._ref);
 
   /// Bu fonksiyon UI'dan çağrılır.
-  /// Metni alır -> AI Analizi -> XP Hesabı -> Hive Kaydı -> Profil Güncelleme
+  /// Metni alır -> AI Analizi -> XP Hesabı -> Firebase Kaydı -> Profil Güncelleme
   Future<Map<String, dynamic>> processAndSave(String rawText) async {
     try {
-
-      //await _aiService.checkAvailableModels();
       // 1. ADIM: AI Analizi
       debugPrint("WorkoutProcessor: AI Analizi başlıyor...");
       
-      // Parse işlemini yap
       final AiParsedWorkout parsed = await _aiService.parseWorkoutText(rawText);
-      
-      // Feedback al (Düzeltilen kısım: Hem text hem parsed veriyi gönderiyoruz)
       final String feedback = await _aiService.generateFeedback(rawText, parsed);
 
       // 2. ADIM: İstatistik Tahmini
@@ -37,65 +39,45 @@ class WorkoutProcessor {
       int totalReps = 0;
 
       for (var ex in parsed.exercises) {
-        final int  s = ex.sets ?? 3;  // Varsayılan 3 set
+        final int s = ex.sets ?? 3;  // Varsayılan 3 set
         final int r = ex.reps ?? 10; // Varsayılan 10 tekrar
         
         totalSets += s;
         totalReps += r;
-        estimatedDuration += (s * 4); // Set başı ortalama 4 dk (hareket + dinlenme)
+        estimatedDuration += (s * 4); // Set başı ortalama 4 dk
       }
       
-      // Hiç egzersiz yoksa bile en az 10 dk sayalım
       if (estimatedDuration == 0) estimatedDuration = 10;
 
-      // 3. ADIM: XP Hesaplama
-      final int xpEarned = _xpEngine.calculateXp(
+      // 3. ADIM: XP Hesaplama (Provider'dan Engine çekiyoruz)
+      final xpEngine = _ref.read(xpEngineProvider);
+      final int xpEarned = xpEngine.calculateXp(
         durationMinutes: estimatedDuration,
         sets: totalSets,
         reps: totalReps,
         difficulty: 'medium', 
       );
 
-      // 4. ADIM: WorkoutSession Kaydı (Hive)
+      // 4. ADIM: WorkoutSession Kaydı (FIREBASE)
       final newSession = WorkoutSession(
         id: _uuid.v4(),
         workoutId: "ai_generated",
         name: "AI Workout (${DateTime.now().day}/${DateTime.now().month})",
         category: "Smart Log",
         durationMinutes: estimatedDuration,
-        calories: estimatedDuration * 7, // Tahmini kalori
+        calories: estimatedDuration * 7,
         date: DateTime.now(),
         xpEarned: xpEarned,
       );
 
-      final sessionBox = Hive.box<WorkoutSession>('workout_sessions_v3');
-      await sessionBox.add(newSession);
-      debugPrint("WorkoutProcessor: Antrenman kaydedildi. ID: ${newSession.id}");
+      // 🔥 Repository Provider'ını kullanarak Firebase'e kaydet
+      await _ref.read(workoutSessionRepositoryProvider).addSession(newSession);
+      debugPrint("WorkoutProcessor: Antrenman Firebase'e kaydedildi. ID: ${newSession.id}");
 
-      // 5. ADIM: Kullanıcı Profilini Güncelle (Level & XP)
-      final profileBox = Hive.box<UserProfile>('user_profile');
-      
-      if (profileBox.isNotEmpty) {
-        // Kutudaki ilk (ve tek) kullanıcıyı al
-        final currentUser = profileBox.values.first;
-        
-        // Yeni toplam XP
-        final newTotalXp = currentUser.totalXp + xpEarned;
-        
-        // Yeni Level hesabı (XpEngine kullanarak)
-        final levelInfo = _xpEngine.levelFromTotalXp(newTotalXp);
-        
-        // Kullanıcıyı güncelle (copyWith ile yeni kopya oluştur)
-        final updatedUser = currentUser.copyWith(
-          totalXp: newTotalXp,
-          level: levelInfo.level,
-        );
-        
-        // Hive'daki veriyi güncelle (index 0'a yazıyoruz)
-        await profileBox.putAt(0, updatedUser);
-        
-        debugPrint("WorkoutProcessor: Profil Güncellendi! Yeni XP: $newTotalXp, Level: ${levelInfo.level}");
-      }
+      // 5. ADIM: Kullanıcı Profilini Güncelle (FIREBASE)
+      // UserProvider'ın içindeki addXp metodu zaten Firebase'i güncelliyor.
+      await _ref.read(userProvider.notifier).addXp(xpEarned);
+      debugPrint("WorkoutProcessor: Profil XP güncellendi! Kazanılan: $xpEarned");
 
       // 6. ADIM: UI'a Sonuç Döndür
       return {

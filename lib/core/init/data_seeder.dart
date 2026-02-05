@@ -18,7 +18,7 @@ class DataSeeder {
       final dio = Dio();
       final response = await dio.get(
         'https://exercisedb.p.rapidapi.com/exercises',
-        queryParameters: {'limit': '15', 'offset': '0'}, // Sayıyı biraz arttırdım
+        queryParameters: {'limit': '15', 'offset': '0'}, 
         options: Options(
           headers: {
             'X-RapidAPI-Key': dotenv.env['RAPID_API_KEY'] ?? '',

@@ -2,11 +2,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:fitlife/core/services/notification_service.dart';
+
 import 'package:fitlife/features/routines/domain/models/routine.dart';
 import 'package:fitlife/features/routines/domain/providers/routine_providers.dart';
-// Egzersizleri çekmek için gerekli provider:
-import 'package:fitlife/features/exercise_library/domain/providers/exercise_providers.dart';
+import 'package:fitlife/features/exercise_library/domain/providers/exercise_providers.dart'; // Exercise modeli için
 
 class RoutineCreatePage extends ConsumerStatefulWidget {
   final Routine? routineToEdit;
@@ -21,7 +20,6 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
   late TextEditingController _nameController;
 
   final Set<int> _selectedDays = {};
-  // ARTIK EGZERSİZ ID'LERİNİ TUTUYORUZ
   final Set<String> _selectedExerciseIds = {};
   
   bool _isReminderEnabled = false;
@@ -35,7 +33,7 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
       final r = widget.routineToEdit!;
       _nameController = TextEditingController(text: r.name);
       _selectedDays.addAll(r.daysOfWeek);
-      _selectedExerciseIds.addAll(r.exerciseIds); // <--- DEĞİŞTİ
+      _selectedExerciseIds.addAll(r.exerciseIds);
       
       _isReminderEnabled = r.isReminderEnabled;
       if (r.reminderHour != null && r.reminderMinute != null) {
@@ -52,18 +50,66 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
     super.dispose();
   }
 
-  String _dayLabel(int day) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return (day >= 1 && day <= 7) ? days[day - 1] : '$day';
+  // Günleri yuvarlak baloncuk içinde göstermek için
+  Widget _buildDaySelector(ColorScheme colorScheme) {
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(7, (index) {
+        final dayIndex = index + 1;
+        final isSelected = _selectedDays.contains(dayIndex);
+        
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              isSelected ? _selectedDays.remove(dayIndex) : _selectedDays.add(dayIndex);
+            });
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isSelected ? colorScheme.primary : colorScheme.surfaceContainerHighest,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? colorScheme.primary : colorScheme.outline,
+                width: 1,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                days[index],
+                style: TextStyle(
+                  color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
   }
 
   Future<void> _pickTime() async {
     final now = TimeOfDay.now();
-    final picked = await showTimePicker(context: context, initialTime: _selectedTime ?? now);
+    final picked = await showTimePicker(
+      context: context, 
+      initialTime: _selectedTime ?? now,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
     if (picked != null) {
-      setState(() => _selectedTime = picked);
-    } else {
-      if (_selectedTime == null) setState(() => _isReminderEnabled = false);
+      setState(() {
+        _selectedTime = picked;
+        _isReminderEnabled = true; // Saat seçildiyse otomatik aktif et
+      });
     }
   }
 
@@ -73,12 +119,8 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select at least one day.')));
       return;
     }
-    if (_selectedExerciseIds.isEmpty) { // <--- DEĞİŞTİ
+    if (_selectedExerciseIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select at least one exercise.')));
-      return;
-    }
-    if (_isReminderEnabled && _selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please pick a time for the reminder.')));
       return;
     }
 
@@ -92,7 +134,7 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
         id: id,
         name: _nameController.text.trim(),
         daysOfWeek: _selectedDays.toList()..sort(),
-        exerciseIds: _selectedExerciseIds.toList(), // <--- DEĞİŞTİ
+        exerciseIds: _selectedExerciseIds.toList(),
         createdAt: widget.routineToEdit?.createdAt ?? DateTime.now(),
         isReminderEnabled: _isReminderEnabled,
         reminderHour: _selectedTime?.hour,
@@ -100,10 +142,9 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
       );
 
       await repo.saveRoutine(routine);
-      await NotificationService().scheduleRoutineNotifications(routine);
 
       if (!mounted) return;
-      context.pop(); // Sayfayı kapat
+      context.pop(); 
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -114,125 +155,214 @@ class _RoutineCreatePageState extends ConsumerState<RoutineCreatePage> {
 
   @override
   Widget build(BuildContext context) {
-    // ARTIK EXERCISE LIST PROVIDER'I DİNLİYORUZ
     final exercisesAsync = ref.watch(exerciseListProvider);
-    final isEditing = widget.routineToEdit != null;
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isEditing = widget.routineToEdit != null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'Edit Routine' : 'New Routine')),
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        title: Text(isEditing ? 'Edit Routine' : 'New Routine', style: const TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Routine Name', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              Form(
-                key: _formKey,
-                child: TextFormField(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // --- İSİM ALANI ---
+                Text('Routine Name', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(hintText: 'e.g. Morning Cardio'),
-                  validator: (v) => v!.trim().isEmpty ? 'Required' : null,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Full Body Workout',
+                    filled: true,
+                    fillColor: colorScheme.surfaceContainerHighest.withAlpha(77),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    prefixIcon: const Icon(Icons.edit_outlined),
+                  ),
+                  validator: (v) => v!.trim().isEmpty ? 'Please enter a name' : null,
                 ),
-              ),
-              const SizedBox(height: 24),
+                
+                const SizedBox(height: 24),
 
-              Text('Days', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: List.generate(7, (i) {
-                  final day = i + 1;
-                  final isSelected = _selectedDays.contains(day);
-                  return FilterChip(
-                    label: Text(_dayLabel(day)),
-                    selected: isSelected,
-                    onSelected: (v) => setState(() => v ? _selectedDays.add(day) : _selectedDays.remove(day)),
-                  );
-                }),
-              ),
-              const SizedBox(height: 24),
+                // --- GÜN SEÇİMİ ---
+                Text('Schedule Days', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                _buildDaySelector(colorScheme),
+                
+                const SizedBox(height: 24),
 
-              Text('Reminders', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              Card(
-                elevation: 0,
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Column(
-                  children: [
-                    SwitchListTile(
-                      title: const Text('Enable Reminder'),
-                      subtitle: Text(_isReminderEnabled && _selectedTime != null 
-                          ? 'Alarm set for ${_selectedTime!.format(context)}' 
-                          : 'Get notified on workout days'),
-                      value: _isReminderEnabled,
-                      onChanged: (val) {
-                        setState(() {
-                          _isReminderEnabled = val;
-                          if (val && _selectedTime == null) _pickTime();
-                        });
-                      },
-                    ),
-                    if (_isReminderEnabled)
-                      ListTile(
-                        leading: const Icon(Icons.access_time),
-                        title: const Text('Set Time'),
-                        trailing: Chip(
-                          label: Text(_selectedTime?.format(context) ?? '--:--'),
-                        ),
-                        onTap: _pickTime,
+                // --- ZAMAN SEÇİMİ (Opsiyonel) ---
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withAlpha(77),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: colorScheme.outlineVariant.withAlpha(77)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: colorScheme.primaryContainer, shape: BoxShape.circle),
+                        child: Icon(Icons.access_time_filled, color: colorScheme.primary),
                       ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // --- EGZERSİZ SEÇİM LİSTESİ ---
-              Text('Select Exercises', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              
-              exercisesAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, s) => Text('Error: $e'),
-                data: (exercises) {
-                  if (exercises.isEmpty) return const Text("Library is empty.");
-                  
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: exercises.length,
-                    itemBuilder: (context, index) {
-                      final ex = exercises[index];
-                      final isChecked = _selectedExerciseIds.contains(ex.id);
-                      return CheckboxListTile(
-                        title: Text(ex.name),
-                        subtitle: Text(ex.muscleGroup),
-                        value: isChecked,
-                        onChanged: (v) {
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Workout Time", style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                            Text(
+                              _selectedTime != null ? _selectedTime!.format(context) : "Not set",
+                              style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _isReminderEnabled,
+                        onChanged: (val) {
                           setState(() {
-                            v == true 
-                              ? _selectedExerciseIds.add(ex.id) 
-                              : _selectedExerciseIds.remove(ex.id);
+                            _isReminderEnabled = val;
+                            if (val && _selectedTime == null) _pickTime();
                           });
                         },
-                      );
-                    },
-                  );
-                },
-              ),
-
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _isSaving ? null : _onSavePressed,
-                  child: Text(isEditing ? 'Update Routine' : 'Create Routine'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 24),
+
+                // --- EGZERSİZ SEÇİMİ ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Select Exercises', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withAlpha(26),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_selectedExerciseIds.length} selected',
+                        style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                
+                exercisesAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, s) => Text('Error loading exercises: $e', style: const TextStyle(color: Colors.red)),
+                  data: (exercises) {
+                    if (exercises.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(20),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: colorScheme.outlineVariant),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text("No exercises found in library."),
+                      );
+                    }
+                    
+                    // Egzersizleri KAS GRUBUNA göre sırala
+                    // (İsteğe bağlı: Gruplayarak göstermek daha şık olur ama basit liste de yeterli)
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: exercises.length,
+                      separatorBuilder: (c, i) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final ex = exercises[index];
+                        final isSelected = _selectedExerciseIds.contains(ex.id);
+                        
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              isSelected 
+                                ? _selectedExerciseIds.remove(ex.id) 
+                                : _selectedExerciseIds.add(ex.id);
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isSelected ? colorScheme.primaryContainer.withAlpha(102) : colorScheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected ? colorScheme.primary : colorScheme.outlineVariant.withAlpha(77),
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                // Kas Grubu İkonu/Baş harfi
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: isSelected ? colorScheme.primary : colorScheme.surfaceContainerHighest,
+                                  child: Text(
+                                    ex.muscleGroup.isNotEmpty ? ex.muscleGroup[0].toUpperCase() : "?",
+                                    style: TextStyle(
+                                      color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(ex.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                      Text(ex.muscleGroup, style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
+                                    ],
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Icon(Icons.check_circle, color: colorScheme.primary),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 40),
+
+                // --- KAYDET BUTONU ---
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton.icon(
+                    onPressed: _isSaving ? null : _onSavePressed,
+                    icon: _isSaving 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.save_outlined),
+                    label: Text(_isSaving ? "Saving..." : (isEditing ? 'Update Routine' : 'Create Routine')),
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),

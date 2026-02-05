@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fitlife/features/workouts/domain/services/workout_processor.dart';
-import 'package:fitlife/core/services/ai_workout_service.dart'; // Parsed modelleri (AiParsedWorkout) tanımak için
+import 'package:fitlife/core/services/ai_workout_service.dart';
 
-class SmartLogScreen extends StatefulWidget {
+class SmartLogScreen extends ConsumerStatefulWidget {
   const SmartLogScreen({super.key});
 
   @override
-  State<SmartLogScreen> createState() => _SmartLogScreenState();
+  ConsumerState<SmartLogScreen> createState() => _SmartLogScreenState();
 }
 
-class _SmartLogScreenState extends State<SmartLogScreen> {
+class _SmartLogScreenState extends ConsumerState<SmartLogScreen> {
   final TextEditingController _controller = TextEditingController();
   
-  // Az önce yazdığımız Processor'ı çağırıyoruz
-  final WorkoutProcessor _processor = WorkoutProcessor();
-
   bool _isLoading = false;
   String? _feedback;
   int? _xpEarned;
@@ -35,8 +33,10 @@ class _SmartLogScreenState extends State<SmartLogScreen> {
     FocusScope.of(context).unfocus();
 
     try {
-      // 🚀 SİHİRLİ AN: Processor çalışıyor...
-      final result = await _processor.processAndSave(_controller.text);
+      // 🚀 DEĞİŞİKLİK BURADA: Processor'ı Provider üzerinden çağırıyoruz
+      final processor = ref.read(workoutProcessorProvider);
+      
+      final result = await processor.processAndSave(_controller.text);
 
       if (result['success'] == true) {
         // İşlem Başarılı!
